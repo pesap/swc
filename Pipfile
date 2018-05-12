@@ -1,0 +1,17 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pandas = "*"
+python-dotenv = "*"
+requests = "*"
+tqdm = "*"
+
+[dev-packages]
+jupyterlab = "*"
+twine = "*"
+
+[requires]
+python_version = "3.6"
