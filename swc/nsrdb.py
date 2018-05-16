@@ -43,9 +43,6 @@ def get_nsrdb_data(lat, lng, year, filename=None, path=DATA_DIR,
     Returns:
         bool: Description of return value
     """
-
-    timeseries_path, meta_path = _create_data_folder(path, year=year)
-
     # If you don't provide a filename choose lat and lng.
     if not filename:
         filename = f'{lat:.4f}_{lng:.4f}.csv'
@@ -55,34 +52,36 @@ def get_nsrdb_data(lat, lng, year, filename=None, path=DATA_DIR,
         if filename[-4:] != '.csv':
             filename = filename + '.csv'
 
-    file_path = timeseries_path.joinpath(filename)
+    timeseries_path, meta_path = _create_data_folder(path, year=year)
+    timeseries_path = timeseries_path.joinpath(filename)
+    meta_path = meta_path.joinpath(filename)
 
-    if force_download or not file_path.is_file():
+    if force_download or not timeseries_path.is_file():
         logger.info('Downloading timeseries')
-        _ = _nsrdb_data(lng, lat, year, path=file_path,
-                        filename=filename, **kwargs)
+        _ = _nsrdb_data(lng, lat, year, timeseries_path=timeseries_path,
+                        meta_path=meta_path, **kwargs)
         if isinstance(_, pd.DataFrame):
-            logger.info(f'Data created in {file_path}')
+            logger.info(f'Data created in {timeseries_path}')
         else:
             logger.error('Data downloading failed. Check API.')
             sys.exit(1)
     else:
-        logger.info(f'File found in {file_path}')
+        logger.info(f'File found in {timeseries_path}')
 
     # If you want metadata only
     if meta:
-        file_path = meta_path.joinpath(year, filename)
-        meta = pd.read_csv(file_path)
+        file_path = meta_path.joinpath(filename)
+        meta = pd.read_csv(meta_path)
         return (meta)
 
     if timeseries:
         #  data = pd.read_csv(time_series_path + filename + '.csv',  index_col=0)
-        data = get_solar_data(file_path=file_path)
+        data = get_solar_data(file_path=timeseries_path)
         #  data = check_nsrdcb(data)
         return (data)
 
 
-def _nsrdb_data(lng, lat, year, path, filename, **kwargs):
+def _nsrdb_data(lng, lat, year, timeseries_path, meta_path, **kwargs):
     """ NRSDB API
     Request to the radiation data from the NSRDB API. Default columns requested.
     If needed more columns a modification to attributes variables is needed.
@@ -137,10 +136,10 @@ def _nsrdb_data(lng, lat, year, path, filename, **kwargs):
     #  logger.error('Could not read data directly from API.')
     meta = df[:2].reset_index().copy()
     meta = meta.rename(columns=meta.iloc[0]).drop(0)
-    #  meta.to_csv(path + year + '/meta/' + filename + '.csv')
+    meta.to_csv(meta_path, index=False)
     time_series = df[2:].dropna(axis=1).reset_index().copy()
     time_series = time_series.rename(columns=time_series.iloc[0]).drop(0)
-    time_series.to_csv(path, index=False)
+    time_series.to_csv(timeseries_path, index=False)
 
     return (time_series)
 

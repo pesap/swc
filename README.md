@@ -24,23 +24,26 @@ Using the solar radiation data as input, we implemented an easy way to change th
 
 ## Configuration
 
-First you need to get an API
-```bash
-export API
+First you need to get an API. Read https://developer.nrel.gov/signup/. Once you have it, create a .env file under your working folder that includes:
+
+```yaml
+API_KEY=YOUR API_KEY_GOES_HERE
 ```
+
+And thats it!
 
 ## Solar radiation data
 
 To get solar radiation data from the NSRB from a Jupyter Notebook or Console
 
 ```python
-import src.sam_simulation as sam
+import swc.nsrdb as nsrdb
 site_info = {'lat': 18.3,
              'lon': -99.3,
              'api_key':'YOUR_API_KEY',
              'force_download': False,
              'year': '2014/'}
-df = sam.get_nsrdb(**site_info)
+df = nsrdb.get_nsrdb(**site_info)
 ```
 
 ## SAM simulation
@@ -48,17 +51,21 @@ df = sam.get_nsrdb(**site_info)
 To perform a SAM simulation using the data from the NSRDB
 
 ```python
+import swc.sam_simulation as sam
 simulation_params = {
+    'lat': 18.3,
+    'lon': -99.3
     'losses': 4.3,
     'dc_ac_ratio': 1.2,
     'inv_eff': 96.,
     'tilt': 20:,
-    'sytem_capacity': 10000,
+    'sytem_capacity': 100,
     'elevation': 1100,
     'timezone': -6,
     'configuration': 0, #  0 For fixed tilt, 2 for 1-axis and 4 for 2-axis
     }
-output_cp, output_gen, output_data = sam.performance_simulation(**simulation_params)
+
+output_data, output_params = sam.sam_simulation(df, **simulation_params)
 ```
 
 ### LCOE Calculation
