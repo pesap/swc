@@ -29,7 +29,7 @@ DATA_DIR = ROOT / 'data'
 DATA_DIR.mkdir(exist_ok=True, parents=True)
 logger = log.custom_logger(__name__)
 
-def performance_simulation(meteo_data, *args, **kwargs):
+def sam_simulation(meteo_data, verbose=False, **kwargs):
     """ SAM performance simulation
 
     Perform a PVWATTS simulation using the SAM python implementation.
@@ -53,9 +53,13 @@ def performance_simulation(meteo_data, *args, **kwargs):
               'configuration': kwargs['configuration'],
               'tilt': kwargs['tilt'],
               }
+
+    if verbose:
+        print ({key: type(value) for key, value in params.items()})
+
     ssc = sscapi.PySSC()
     wfd = ssc.data_create()
-    ssc.data_set_number(wfd, 'lat', params['lat'])
+    ssc.data_set_number(wfd, 'lat', 10.5)
     ssc.data_set_number(wfd, 'lon', params['lon'])
     ssc.data_set_number(wfd, 'tz', params['timezone'])
     ssc.data_set_number(wfd, 'elev', params['elevation'])
@@ -120,11 +124,12 @@ def performance_simulation(meteo_data, *args, **kwargs):
         mod = ssc.module_create('pvwattsv5')
         ssc.module_exec(mod, dat)
         meteo_data['generation'] = np.array(ssc.data_get_array(dat, 'gen'))
+        meteo_data['cf'] = meteo_data['generation'] / system_capacity
         CP = meteo_data['generation'].sum() / (525600/int('60') * system_capacity)
         generation = meteo_data['generation'].sum()
         ssc.data_free(dat)
         ssc.module_free(mod)
-        return (CP, generation, meteo_data)
+        return (meteo_data, (CP, generation))
     return (True)
 
 
