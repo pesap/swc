@@ -2,7 +2,14 @@
 
 This is a code that I wrote to make use of the System Advisor Model and the NSRDB API.
 
-## Instalation/configuration
+## How to install
+
+```bash
+pip install swc
+```
+
+
+## Developer Instalation/configuration
 
 ### Pipenv installation
 
