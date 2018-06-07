@@ -12,6 +12,8 @@ tqdm = "*"
 [dev-packages]
 jupyterlab = "*"
 twine = "*"
+bumpversion = "*"
+wheel = "*"
 
 [requires]
 python_version = "3.6"
