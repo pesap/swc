@@ -13,6 +13,7 @@ Todo:
 import sys
 import numpy as np
 import pandas as pd
+import click
 from pathlib import Path
 
 import solar
@@ -30,6 +31,49 @@ ROOT =  Path(__file__).parents[1]
 DATA_DIR = ROOT / 'data'
 DATA_DIR.mkdir(exist_ok=True, parents=True)
 logger = log.custom_logger(__name__)
+
+
+@click.command()
+@click.option('--lat', default=19.5, prompt='Latitude',
+                help='Latitude of the place')
+@click.option('--lng', default=-99.5, prompt='Longitude',
+                help='Longitude of the place')
+@click.option('--year', default=2014, prompt='Year',
+                help='Year of data up to 2016')
+@click.option('--filename', default=False, prompt='Filename',
+                help='Filename of the data', required=False)
+@click.option('--force_download', default=False, is_flag=True,
+                help='Force download from the API')
+@click.option('--verbose', is_flag=True)
+@click.pass_context
+def sam(ctx, lat, lng, filename, force_download, year, verbose):
+    click.secho('\nRunning SAM simulation...\n', fg='blue')
+    site_info = {'lat': lat,
+                 'lng': lng,
+                 'force_download': force_download,
+                 'year': str(year),
+                 'filename': filename,
+                 'verbose': verbose
+                }
+    if verbose:
+        click.secho('Input data', fg='yellow')
+        pp.pprint(site_info)
+
+    solar_data = get_nsrdb_data(**site_info)
+    simulation_params = {
+                            'losses': 4.3,
+                            'dc_ac_ratio': 1.2,
+                            'inv_eff': 96.,
+                            'system_capacity': 100,
+                            'configuration': 2, #  0 For fixed tilt, 2 for 1-axis and 4 for 2-axis
+                            'verbose': False}
+    meta_data = get_nsrdb_data(meta=True, **site_info)
+    simulation_params['elevation'] = meta_data['Elevation'].values
+    simulation_params['timezone'] = meta_data['Time Zone'].values
+    simulation_params['tilt'] = site_info['lat']
+    z = {**simulation_params, **site_info}
+    sam, _ = sam_simulation(solar_data, **z)
+    pass
 
 def sam_simulation(meteo_data, verbose=False, **kwargs):
     """ SAM performance simulation
@@ -129,8 +173,12 @@ def sam_simulation(meteo_data, verbose=False, **kwargs):
         meteo_data['cf'] = meteo_data['generation'] / system_capacity
         CP = meteo_data['generation'].sum() / (525600/int('60') * system_capacity)
         generation = meteo_data['generation'].sum()
+        click.secho('Output data from SAM.', fg='green')
+        click.secho(f'Capacity Factor: {CP}', fg='blue')
+        click.secho(f'Annual Generation: {generation}', fg='blue')
         ssc.data_free(dat)
         ssc.module_free(mod)
+        meteo_data.to_csv(output_path / 'test.csv')
         return (meteo_data, (CP, generation))
     return (True)
 
