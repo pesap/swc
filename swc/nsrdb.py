@@ -11,6 +11,7 @@ Todo:
     * Clean code
 """
 import os
+import click
 import requests
 import pandas as pd
 
@@ -25,6 +26,35 @@ from context import *
 # Module level variables
 data_path.mkdir(exist_ok=True, parents=True)
 logger = log.custom_logger(__name__)
+
+@click.command()
+@click.option('--lat', default=19.5, prompt='Latitude',
+                help='Latitude of the place')
+@click.option('--lng', default=-99.5, prompt='Longitude',
+                help='Longitude of the place')
+@click.option('--year', default=2014, prompt='Year',
+                help='Year of data up to 2016')
+@click.option('--filename', default=False, prompt='Filename',
+                help='Filename of the data', required=False)
+@click.option('--force_download', default=False, is_flag=True,
+                help='Force download from the API')
+@click.option('--verbose', is_flag=True)
+@click.pass_context
+def nsrdb(ctx, lat, lng, filename, force_download, year, verbose):
+    click.secho('\nGeting data...\n', fg='blue')
+    site_info = {'lat': lat,
+                 'lng': lng,
+                 'force_download': force_download,
+                 'year': str(year),
+                 'filename': filename,
+                 'verbose': verbose
+                }
+    if verbose:
+        click.secho('Input data', fg='yellow')
+        pp.pprint(site_info)
+
+    get_nsrdb_data(**site_info)
+    pass
 
 def get_nsrdb_data(lat, lng, year, filename=None, path=data_path,
                    force_download=False, timeseries=True,
@@ -47,6 +77,8 @@ def get_nsrdb_data(lat, lng, year, filename=None, path=data_path,
     # If you don't provide a filename choose lat and lng.
     if not filename:
         filename = f'{lat:.4f}_{lng:.4f}.csv'
+        click.secho(f'\nNo filename provided. Using lat and longitude as'
+                'filename', fg='yellow')
         logger.warning('No filename provided.'
                        'Using Longitude and latitude instead')
     else:
@@ -56,18 +88,24 @@ def get_nsrdb_data(lat, lng, year, filename=None, path=data_path,
     timeseries_path, meta_path = _create_data_folder(path, year=year)
     timeseries_path = timeseries_path.joinpath(filename)
     meta_path = meta_path.joinpath(filename)
-    print (timeseries_path)
+    if kwargs['verbose']:
+        click.secho(f'\nSaving data in {timeseries_path}', fg='yellow')
 
     if force_download or not timeseries_path.is_file():
         logger.info('Downloading timeseries')
+        click.secho('Downloading timeseries from NSRDB...\n', fg='yellow')
         _ = _nsrdb_data(lng, lat, year, timeseries_path=timeseries_path,
                         meta_path=meta_path, **kwargs)
         if isinstance(_, pd.DataFrame):
+            click.secho(f'Sucess ✓. Data created in {timeseries_path}\n', fg='green')
             logger.info(f'Data created in {timeseries_path}')
         else:
+            click.secho(f'Failed ✘. Data download failed. Check the API',
+                    fg='red')
             logger.error('Data downloading failed. Check API.')
             sys.exit(1)
     else:
+        click.secho(f'Sucess ✓. File found in {timeseries_path}\n', fg='green')
         logger.info(f'File found in {timeseries_path}')
 
     # If you want metadata only
@@ -148,10 +186,4 @@ def _nsrdb_data(lng, lat, year, timeseries_path, meta_path, **kwargs):
     return (time_series)
 
 if __name__ == "__main__":
-    site_info = {'lat': 19.3,
-                 'lng': -99.3,
-                 'force_download': False,
-                 'year': '2014'
-                }
-
-    df = get_nsrdb_data(**site_info)
+    nsrdb(obj={})
