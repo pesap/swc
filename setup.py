@@ -9,7 +9,6 @@ from setuptools import find_packages, setup, Command
 
 from setuptools import setup, find_packages
 
-here = path.abspath(path.dirname(__file__))
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -29,7 +28,7 @@ required = [
 ]
 
 # Get the long description from the README file
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
@@ -59,4 +58,7 @@ setup(
     packages=find_packages(include=['swc', 'swc.*'],
                            exclude=['tests']),
     keywords='sam solar simulation nsrdb',  # Optional
+    entry_points={
+        'console_scripts': ['swc = swc:main']
+    },
 )
