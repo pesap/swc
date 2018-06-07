@@ -15,6 +15,7 @@ jupyterlab = "*"
 twine = "*"
 bumpversion = "*"
 wheel = "*"
+"e1839a8" = {path = ".", editable = true}
 
 [requires]
 python_version = "3.6"
