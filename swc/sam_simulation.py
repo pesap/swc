@@ -18,9 +18,11 @@ from pathlib import Path
 import solar
 import log
 import sscapi
+from utils import timeit
 from utils import _create_data_folder, get_solar_data
 from utils import check_nsrdb
-from nsrdb import get_solar_data, _nsrdb_data
+from nsrdb import get_nsrdb_data
+from context import *
 
 ROOT =  Path(__file__).parents[1]
 
@@ -43,7 +45,7 @@ def sam_simulation(meteo_data, verbose=False, **kwargs):
         meto_data (pd.DataFrame): Dataframe with hourly generation
     """
     params = {'lat': kwargs['lat'],
-              'lon': kwargs['lon'],
+              'lon': kwargs['lng'],
               'timezone': kwargs['timezone'],
               'elevation': kwargs['elevation'],
               'sys_capacity': kwargs['system_capacity'],
@@ -59,7 +61,7 @@ def sam_simulation(meteo_data, verbose=False, **kwargs):
 
     ssc = sscapi.PySSC()
     wfd = ssc.data_create()
-    ssc.data_set_number(wfd, 'lat', 10.5)
+    ssc.data_set_number(wfd, 'lat', params['lat'])
     ssc.data_set_number(wfd, 'lon', params['lon'])
     ssc.data_set_number(wfd, 'tz', params['timezone'])
     ssc.data_set_number(wfd, 'elev', params['elevation'])
@@ -136,9 +138,22 @@ def sam_simulation(meteo_data, verbose=False, **kwargs):
 if __name__ == "__main__":
     site_info = {'lat': 19.3,
                  'lng': -99.3,
-                 'force_download': True,
+                 'force_download': False,
                  'year': '2014'
                 }
 
-    df = get_nsrdb_data(**site_info)
+    solar_data = get_nsrdb_data(**site_info)
+    simulation_params = {
+                            'losses': 4.3,
+                            'dc_ac_ratio': 1.2,
+                            'inv_eff': 96.,
+                            'system_capacity': 100,
+                            'configuration': 2, #  0 For fixed tilt, 2 for 1-axis and 4 for 2-axis
+                            'verbose': False}
+    meta_data = get_nsrdb_data(meta=True, **site_info)
+    simulation_params['elevation'] = meta_data['Elevation'].values
+    simulation_params['timezone'] = meta_data['Time Zone'].values
+    simulation_params['tilt'] = site_info['lat']
+    z = {**simulation_params, **site_info}
+    sam, _ = sam_simulation(solar_data, **z)
     pass

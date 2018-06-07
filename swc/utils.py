@@ -1,15 +1,27 @@
 import sys
 import log
+import time
 import pandas as pd
 from pathlib import Path
+from context import *
 
-ROOT =  Path(__file__).parents[1]
 
-# Module level variables
-raw_path = '../data/raw/'
-DATA_DIR = ROOT / 'data'
-DATA_DIR.mkdir(exist_ok=True, parents=True)
+data_path.mkdir(exist_ok=True, parents=True)
 logger = log.custom_logger(__name__)
+
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        if 'log_time' in kw:
+            name = kw.get('log_name', method.__name__.upper())
+            kw['log_time'][name] = int((te - ts) * 1000)
+        else:
+            print ('%r  %2.2f ms' % \
+                  (method.__name__, (te - ts) * 1000))
+        return result
+    return timed
 
 def _create_data_folder(path, source='NSRDB', year='2017'):
     """ Create data folder
@@ -17,15 +29,15 @@ def _create_data_folder(path, source='NSRDB', year='2017'):
     Returns:
         bool: True
     """
-    TIMESERIES_DIR = DATA_DIR / 'raw' / source / 'timeseries' / year
-    META_DIR = DATA_DIR / 'raw' / source / 'meta' / year
+    TIMESERIES_DIR = path / 'raw' / source / 'timeseries' / year
+    META_DIR = path / 'raw' / source / 'meta' / year
     TIMESERIES_DIR.mkdir(exist_ok=True, parents=True)
     META_DIR.mkdir(exist_ok=True, parents=True)
     return (TIMESERIES_DIR, META_DIR)
 
-def get_solar_data(file_path=DATA_DIR,
+def get_solar_data(file_path=data_path,
                    tmy=False, **kwargs):
-    """ Read solar data from DATA_DIR
+    """ Read solar data from data_path
 
     Read csv file and modify the custom index by a DateTimeIndex using
     columns ['Year', 'Month', 'Day', 'Hour', 'Minute']
@@ -37,7 +49,7 @@ def get_solar_data(file_path=DATA_DIR,
     Returns
         pd.DataFrame: data with modified index
     """
-    #  file_path = DATA_DIR / filename + '.csv'
+    #  file_path = data_path / filename + '.csv'
 
     data = pd.read_csv(file_path)
 
@@ -64,5 +76,4 @@ def check_nsrdb(data):
     data = data[data['DHI'] < 0] = 0
     return (data)
 
-#  def request_data(api_key=None):
-#
+

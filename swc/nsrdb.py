@@ -16,16 +16,17 @@ import pandas as pd
 
 import log
 from utils import _create_data_folder, get_solar_data
+from utils import timeit
 from pathlib import Path
+from context import *
 
-ROOT =  Path(__file__).parents[1]
+
 
 # Module level variables
-DATA_DIR = ROOT / 'data'
-DATA_DIR.mkdir(exist_ok=True, parents=True)
+data_path.mkdir(exist_ok=True, parents=True)
 logger = log.custom_logger(__name__)
 
-def get_nsrdb_data(lat, lng, year, filename=None, path=DATA_DIR,
+def get_nsrdb_data(lat, lng, year, filename=None, path=data_path,
                    force_download=False, timeseries=True,
                    meta=False,  **kwargs):
     """ Get the solar radiation data
@@ -55,6 +56,7 @@ def get_nsrdb_data(lat, lng, year, filename=None, path=DATA_DIR,
     timeseries_path, meta_path = _create_data_folder(path, year=year)
     timeseries_path = timeseries_path.joinpath(filename)
     meta_path = meta_path.joinpath(filename)
+    print (timeseries_path)
 
     if force_download or not timeseries_path.is_file():
         logger.info('Downloading timeseries')
@@ -126,14 +128,16 @@ def _nsrdb_data(lng, lat, year, timeseries_path, meta_path, **kwargs):
         'cache-control': "no-cache"
     }
     response = requests.get(url, params=params, headers=headers)
+    limit = int(response.headers['X-RateLimit-Remaining'])
+    logger.info(f'Request limit: {limit}')
+    if limit <= 10:
+        logger.warning(f'You almost reach the daily limit. Be careful!')
     if response.status_code == '400':
         print (response.reason)
         print (response.content)
         sys.exit(1)
 
     df = pd.read_csv(response.url, header=None, index_col=[0]) # Index col to avoid deleting index columns after export
-    #  logger(e)
-    #  logger.error('Could not read data directly from API.')
     meta = df[:2].reset_index().copy()
     meta = meta.rename(columns=meta.iloc[0]).drop(0)
     meta.to_csv(meta_path, index=False)
@@ -146,7 +150,7 @@ def _nsrdb_data(lng, lat, year, timeseries_path, meta_path, **kwargs):
 if __name__ == "__main__":
     site_info = {'lat': 19.3,
                  'lng': -99.3,
-                 'force_download': True,
+                 'force_download': False,
                  'year': '2014'
                 }
 

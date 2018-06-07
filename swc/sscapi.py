@@ -8,6 +8,7 @@
 
 import string, sys, struct, os, numpy
 from ctypes import *
+from pathlib import Path
 
 c_number = c_float # must be c_double or c_float depending on how defined in sscapi.h
 class PySSC:
@@ -20,7 +21,7 @@ class PySSC:
 			else:
 				self.pdll = CDLL("ssc.dll")
 		elif sys.platform == 'darwin':
-			self.pdll = CDLL("ssc.dylib")
+			self.pdll = CDLL(Path(__file__).parents[0] / "ssc.dylib")
 		elif sys.platform == 'linux2':
 			self.pdll = CDLL('./ssc.so')   # instead of relative path, require user to have on LD_LIBRARY_PATH
 		else:
