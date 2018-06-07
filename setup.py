@@ -55,6 +55,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/pypa/example-project",
     install_requires=required,
+    include_package_data=True,
     packages=find_packages(include=['swc', 'swc.*'],
                            exclude=['tests']),
     keywords='sam solar simulation nsrdb',  # Optional
