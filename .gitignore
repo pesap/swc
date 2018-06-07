@@ -22,3 +22,4 @@ notebooks/
 # iPython checkpoints
 .ipynb_checkpoints/
 tags
+build/
