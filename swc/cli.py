@@ -2,7 +2,6 @@ import sys
 import click
 import requests
 import pprint
-from tqdm import tqdm
 
 from __version__ import __version__
 from context import *
