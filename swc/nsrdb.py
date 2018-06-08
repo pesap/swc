@@ -138,6 +138,9 @@ def _nsrdb_data(lng, lat, year, timeseries_path, meta_path, **kwargs):
     """
     api_key = os.getenv('API_KEY') #kwargs['api_key'] # Personal API key
 
+    if not api_key:
+        api_key = kwargs['api_key']
+
     if not year == 'tmy':
         attributes = ('ghi,dhi,dni,wind_speed,wind_direction,'
                       'air_temperature,solar_zenith_angle')
