@@ -7,7 +7,7 @@ from __version__ import __version__
 from context import *
 from nsrdb_cli import nsrdb
 from nsrdb_cli import get_nsrdb_data
-from sam_simulation import sam
+from sam_simulation_cli import sam
 
 
 

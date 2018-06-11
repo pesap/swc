@@ -49,7 +49,7 @@ site_info = {'lat': 18.3,
              'lon': -99.3,
              'api_key':'YOUR_API_KEY',
              'force_download': False,
-             'year': '2014/'}
+             'year': '2014'}
 df = nsrdb.get_nsrdb(**site_info)
 ```
 
@@ -61,15 +61,17 @@ To perform a SAM simulation using the data from the NSRDB
 import swc.sam_simulation as sam
 simulation_params = {
     'lat': 18.3,
-    'lon': -99.3
+    'lng': -99.3,
     'losses': 4.3,
     'dc_ac_ratio': 1.2,
     'inv_eff': 96.,
-    'tilt': 20:,
-    'sytem_capacity': 100,
+    'tilt': 20,
+    'system_capacity': 100,
     'elevation': 1100,
     'timezone': -6,
     'configuration': 0, #  0 For fixed tilt, 2 for 1-axis and 4 for 2-axis
+    'gcr': 0.4,
+    'azimuth': 100,
     }
 
 output_data, output_params = sam.sam_simulation(df, **simulation_params)
