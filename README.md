@@ -46,7 +46,7 @@ To get solar radiation data from the NSRB from a Jupyter Notebook or Console
 ```python
 import swc.nsrdb as nsrdb
 site_info = {'lat': 18.3,
-             'lon': -99.3,
+             'lng: -99.3,
              'api_key':'YOUR_API_KEY',
              'force_download': False,
              'year': '2014'}
@@ -60,8 +60,8 @@ To perform a SAM simulation using the data from the NSRDB
 ```python
 import swc.sam_simulation as sam
 simulation_params = {
-    'lat': 18.3,
-    'lng': -99.3,
+    'lat': site_info['lat'],
+    'lng': site_info['lng'],
     'losses': 4.3,
     'dc_ac_ratio': 1.2,
     'inv_eff': 96.,
