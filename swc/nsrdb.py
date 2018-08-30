@@ -12,7 +12,8 @@ from context import *
 data_path.mkdir(exist_ok=True, parents=True)
 logger = log.custom_logger(__name__)
 
-def nsrdb(lat, lng, filename, force_download, year, verbose=False):
+def nsrdb(lat, lng, year, filename=None, force_download=False, 
+          verbose=False, **kwargs):
     site_info = {'lat': lat,
                  'lng': lng,
                  'force_download': force_download,
@@ -20,11 +21,16 @@ def nsrdb(lat, lng, filename, force_download, year, verbose=False):
                  'filename': filename,
                  'verbose': verbose
                 }
+
+    # Include kwargs to dictionary
+    site_info.update(kwargs)
+
     if verbose:
         pp.pprint(site_info)
 
-    get_nsrdb_data(**site_info)
-    pass
+    data = get_nsrdb_data(**site_info)
+
+    return data
 
 def get_nsrdb_data(lat, lng, year, filename=None, path=data_path,
                    force_download=False, timeseries=True,
@@ -100,7 +106,7 @@ def _nsrdb_data(lng, lat, year, timeseries_path, meta_path, **kwargs):
     Returns
         pd.DataFrame: Solar radiation Time series
     """
-    api_key = os.getenv('API_KEY') #kwargs['api_key'] # Personal API key
+    api_key = os.getenv('api_key') #kwargs['api_key'] # Personal API key
 
     if not api_key:
         api_key = kwargs['api_key']
@@ -115,7 +121,7 @@ def _nsrdb_data(lng, lat, year, timeseries_path, meta_path, **kwargs):
 
     leap_year = 'false' # corresponding to the year above. Check here: https://kalender-365.de/leap-years.php
 
-    utc = 'false' #This needs to be taken into account when exporting to SWITCH, as SWITCH load projections are in UTC
+    utc = 'true' #This needs to be taken into account when exporting to SWITCH, as SWITCH load projections are in UTC
 
     # NOTE: In order to use the NSRDB data in SAM, you must specify UTC
     # as 'false'. SAM requires the data to be in the local time zone.
@@ -128,15 +134,22 @@ def _nsrdb_data(lng, lat, year, timeseries_path, meta_path, **kwargs):
         'name': year,
         'interval' : '60'
     }
+    params.update(kwargs)
     headers = {
         'content-type': "application/x-www-form-urlencoded",
         'cache-control': "no-cache"
     }
     response = requests.get(url, params=params, headers=headers)
-    limit = int(response.headers['X-RateLimit-Remaining'])
-    logger.info(f'Request limit: {limit}')
-    if limit <= 10:
-        logger.warning(f'You almost reach the daily limit. Be careful!')
+    logger.info(f'API Response: {response.status_code}')
+    try:
+        limit = int(response.headers['X-RateLimit-Remaining'])
+        logger.info(f'Request limit: {limit}')
+        if limit <= 10:
+            logger.warning(f'You almost reach the daily limit. Be careful!')
+    except KeyError:
+        # TODO: Catch this error
+        pass
+
     if response.status_code == '400':
         print (response.reason)
         print (response.content)
@@ -148,6 +161,10 @@ def _nsrdb_data(lng, lat, year, timeseries_path, meta_path, **kwargs):
     meta.to_csv(meta_path, index=False)
     time_series = df[2:].dropna(axis=1).reset_index().copy()
     time_series = time_series.rename(columns=time_series.iloc[0]).drop(0)
+
+    # Remove whitespace with underscore from columns name
+    time_series.columns = time_series.columns.str.replace(' ', '_')
+
     time_series.to_csv(timeseries_path, index=False)
 
     return (time_series)
@@ -157,7 +174,9 @@ if __name__ == "__main__":
                  'lng': -99,
                  'force_download': True,
                  'year': str(2016),
-                 'filename': None,
-                 'verbose': False
+                 'verbose': False,
+                 'interval': '60'
                 }
-    nsrdb(**site_info)
+
+    df = nsrdb(**site_info)
+    print (df)
