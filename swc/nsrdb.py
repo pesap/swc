@@ -1,14 +1,20 @@
+"""
+    Module to download data from the nsrdb from NREL.
+"""
+
 import os
 import requests
 import pandas as pd
-
 import log
+
 from utils import _create_data_folder, get_solar_data
 from utils import timeit
 from pathlib import Path
-from context import *
 
 # Module level variables
+from context import *
+
+# Creating datafolder
 data_path.mkdir(exist_ok=True, parents=True)
 logger = log.custom_logger(__name__)
 
@@ -56,27 +62,31 @@ def get_nsrdb_data(lat, lng, year, filename=None, path=data_path,
         logger.warning('No filename provided.'
                        'Using Longitude and latitude instead')
     else:
+        # Include .csv to filename 
         if filename[-4:] != '.csv':
             filename = filename + '.csv'
 
     timeseries_path, meta_path = _create_data_folder(path, year=year)
-    timeseries_path = timeseries_path.joinpath(filename)
+    timeseries_filename = timeseries_path.joinpath(filename)
     meta_path = meta_path.joinpath(filename)
+
     #  if kwargs['verbose']: print(kwargs)
     #  if kwargs['verbose']:
     #      logger.warning(f'\nSaving data in {timeseries_path}')
 
-    if force_download or not timeseries_path.is_file():
+    # If force download or file does not exists
+    if force_download or not timeseries_filename.is_file():
         logger.info('Downloading timeseries from NSRCB')
-        _ = _nsrdb_data(lng, lat, year, timeseries_path=timeseries_path,
+        _ = request_nsrdb_data(lng, lat, year,
+                timeseries_filename=timeseries_filename,
                         meta_path=meta_path, **kwargs)
         if isinstance(_, pd.DataFrame):
-            logger.info(f'Data created in {timeseries_path}')
+            logger.info(f'Data created in {timeseries_filename}')
         else:
             logger.error('Data downloading failed. Check API.')
             sys.exit(1)
     else:
-        logger.info(f'File found in {timeseries_path}')
+        logger.info(f'File found in {timeseries_filename}')
 
     # If you want metadata only
     if meta:
@@ -86,12 +96,12 @@ def get_nsrdb_data(lat, lng, year, filename=None, path=data_path,
 
     if timeseries:
         #  data = pd.read_csv(time_series_path + filename + '.csv',  index_col=0)
-        data = get_solar_data(file_path=timeseries_path)
+        data = get_solar_data(file_path=timeseries_filename)
         #  data = check_nsrdcb(data)
         return (data)
 
 
-def _nsrdb_data(lng, lat, year, timeseries_path, meta_path, **kwargs):
+def request_nsrdb_data(lng, lat, year, timeseries_filename, meta_path, **kwargs):
     """ NRSDB API
     Request to the radiation data from the NSRDB API. Default columns requested.
     If needed more columns a modification to attributes variables is needed.
@@ -106,10 +116,10 @@ def _nsrdb_data(lng, lat, year, timeseries_path, meta_path, **kwargs):
     Returns
         pd.DataFrame: Solar radiation Time series
     """
-    api_key = os.getenv('api_key') #kwargs['api_key'] # Personal API key
-
+    if not 'api_key' in kwargs:
+        api_key = os.getenv('api_key') #kwargs['api_key'] # Personal API key
     if not api_key:
-        api_key = kwargs['api_key']
+        raise NameError('api_key not found. Please included it in .env or manually')
 
     if not year == 'tmy':
         attributes = ('ghi,dhi,dni,wind_speed,wind_direction,'
@@ -125,21 +135,31 @@ def _nsrdb_data(lng, lat, year, timeseries_path, meta_path, **kwargs):
 
     # NOTE: In order to use the NSRDB data in SAM, you must specify UTC
     # as 'false'. SAM requires the data to be in the local time zone.
+
+    # New url to include physical model 3
     url = 'http://developer.nrel.gov/api/solar/nsrdb_psm3_download.csv'
+
     params = {
         'api_key': api_key,
         'wkt': f'POINT({lng:.4f} {lat:.4f})',
         'attributes': attributes,
         'email': 'mail@gmail.com',
-        'name': year,
+        'names': year,
         'interval' : '60'
     }
+
     params.update(kwargs)
-    headers = {
-        'content-type': "application/x-www-form-urlencoded",
-        'cache-control': "no-cache"
-    }
-    response = requests.get(url, params=params, headers=headers)
+    if kwargs['verbose']:
+        pp.pprint(params)
+
+
+    # headers = {
+        # 'content-type': "application/x-www-form-urlencoded",
+        # 'cache-control': "no-cache"
+    # }
+
+    # Make the request
+    response = requests.get(url, params=params)
     logger.info(f'API Response: {response.status_code}')
     try:
         limit = int(response.headers['X-RateLimit-Remaining'])
@@ -150,31 +170,31 @@ def _nsrdb_data(lng, lat, year, timeseries_path, meta_path, **kwargs):
         # TODO: Catch this error
         pass
 
-    if response.status_code == '400':
+    if response.status_code != '200':
+        print (response.status_code)
         print (response.reason)
-        print (response.content)
         sys.exit(1)
+    else:
+        df = pd.read_csv(response.url, header=None, index_col=[0]) # Index col to avoid deleting index columns after export
+        meta = df[:2].reset_index().copy()
+        meta = meta.rename(columns=meta.iloc[0]).drop(0)
+        meta.to_csv(meta_path, index=False)
+        time_series = df[2:].dropna(axis=1).reset_index().copy()
+        time_series = time_series.rename(columns=time_series.iloc[0]).drop(0)
 
-    df = pd.read_csv(response.url, header=None, index_col=[0]) # Index col to avoid deleting index columns after export
-    meta = df[:2].reset_index().copy()
-    meta = meta.rename(columns=meta.iloc[0]).drop(0)
-    meta.to_csv(meta_path, index=False)
-    time_series = df[2:].dropna(axis=1).reset_index().copy()
-    time_series = time_series.rename(columns=time_series.iloc[0]).drop(0)
+        # Remove whitespace with underscore from columns name
+        time_series.columns = time_series.columns.str.replace(' ', '_')
 
-    # Remove whitespace with underscore from columns name
-    time_series.columns = time_series.columns.str.replace(' ', '_')
+        time_series.to_csv(timeseries_path, index=False)
 
-    time_series.to_csv(timeseries_path, index=False)
-
-    return (time_series)
+        return (time_series)
 
 if __name__ == "__main__":
-    site_info = {'lat': 19,
+    site_info = {'lat': 19.30,
                  'lng': -99,
                  'force_download': True,
-                 'year': str(2016),
-                 'verbose': False,
+                 'year': str(2014),
+                 'verbose': True,
                  'interval': '60'
                 }
 

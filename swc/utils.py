@@ -33,6 +33,7 @@ def _create_data_folder(path, source='NSRDB', year='2017'):
     META_DIR = path / 'raw' / source / 'meta' / year
     TIMESERIES_DIR.mkdir(exist_ok=True, parents=True)
     META_DIR.mkdir(exist_ok=True, parents=True)
+
     return (TIMESERIES_DIR, META_DIR)
 
 def get_solar_data(file_path=data_path,
