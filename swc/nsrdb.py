@@ -119,7 +119,7 @@ def request_nsrdb_data(lng, lat, year, timeseries_filename, meta_path, **kwargs)
     if not 'api_key' in kwargs:
         api_key = os.getenv('api_key') #kwargs['api_key'] # Personal API key
     else:
-        api_key = None
+        api_key = kwargs['api_key']
     if not api_key:
         raise NameError('api_key not found. Please included it in .env or manually')
 
