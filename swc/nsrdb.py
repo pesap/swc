@@ -188,7 +188,7 @@ def request_nsrdb_data(lng, lat, year, timeseries_filename, meta_path, **kwargs)
         # Remove whitespace with underscore from columns name
         time_series.columns = time_series.columns.str.replace(' ', '_')
 
-        time_series.to_csv(timeseries_path, index=False)
+        time_series.to_csv(timeseries_filename, index=False)
 
         return (time_series)
 
