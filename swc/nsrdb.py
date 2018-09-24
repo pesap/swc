@@ -173,7 +173,7 @@ def request_nsrdb_data(lng, lat, year, timeseries_filename, meta_path, **kwargs)
         # TODO: Catch this error
         pass
 
-    if response.status_code != '200':
+    if response.status_code != 200:
         print (response.status_code)
         print (response.reason)
         sys.exit(1)
