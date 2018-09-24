@@ -10,6 +10,7 @@ ROOT = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, ROOT)
 
 from cli import main
+from .__version__ import __version__
 
 if __name__ == "__main__":
     main()

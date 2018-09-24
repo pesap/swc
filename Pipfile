@@ -9,6 +9,7 @@ python-dotenv = "*"
 requests = "*"
 tqdm = "*"
 click = "*"
+swc = {editable = true, path = "."}
 
 [dev-packages]
 jupyterlab = "*"
@@ -19,3 +20,6 @@ wheel = "*"
 
 [requires]
 python_version = "3.6"
+
+[scripts]
+bdist = "python setup.py bdist_wheel"
