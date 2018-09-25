@@ -186,7 +186,7 @@ def request_nsrdb_data(lng, lat, year, timeseries_filename, meta_path, **kwargs)
         time_series = time_series.rename(columns=time_series.iloc[0]).drop(0)
 
         # Remove whitespace with underscore from columns name
-        time_series.columns = time_series.columns.str.replace(' ', '_')
+        # time_series.columns = time_series.columns.str.replace(' ', '_')
 
         time_series.to_csv(timeseries_filename, index=False)
 
