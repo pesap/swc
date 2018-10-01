@@ -94,7 +94,7 @@ print (lcoe(output_gen))
 ---
 ## Todo
 * Change the request method from the NSRDB API
-* Add more inputs in performance_simulation
+* Add more inputs in `performance_simulation`
 
 ## Important information
 
