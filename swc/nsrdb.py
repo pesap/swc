@@ -1,25 +1,64 @@
-"""
-    Module to download data from the nsrdb from NREL.
+""" NSRDB data module
+
+This script downloads the data from the NSRDB from NREL for a specific
+location in the world. This toolfunction with an input dictionary with
+the parameters to request the data.
+
+This script requires `pandas` and `request` to be insalled within the python
+environment you are running this script
+
+TODO:
+    * Change way to handle timeseries_path and meta_path
+    * Catch different errors from request
+    * Implement a better way to debug
 """
 
 import os
+import log
 import requests
 import pandas as pd
-import log
-
-from utils import _create_data_folder, get_solar_data
-from utils import timeit
 from pathlib import Path
 
-# Module level variables
+# Package scripts
+from utils import _create_data_folder, get_solar_data
+from utils import timeit
+
+# Package level variables
 from context import *
 
 # Creating datafolder
 data_path.mkdir(exist_ok=True, parents=True)
 logger = log.custom_logger(__name__)
 
-def nsrdb(lat, lng, year, filename=None, force_download=False, 
+def nsrdb(lat, lng, year, filename=None, force_download=False,
           verbose=False, **kwargs):
+    """ NSRDB data
+
+    This function pre-process the request.
+
+    NOTE: This function might disappear in the future
+    Parameters
+    ----------
+        lat (float):
+            Latitude in degrees
+        lng (float):
+            Longtitude in degrees
+        year (str):
+            Year of data
+        filename (str): optional
+            Filename of the data
+        force_download (bool): optional
+            Force the data to be download. Otherwise look for data in folder.
+        verbose (bool): optional
+            Print dictionaries
+        kwargs (dict):
+            Dictionary with api_key to request data
+
+    Returns
+    -------
+        data (pd.DataFrame):
+            Radiation dataDescription of return value
+    """
     site_info = {'lat': lat,
                  'lng': lng,
                  'force_download': force_download,
@@ -43,26 +82,41 @@ def get_nsrdb_data(lat, lng, year, filename=None, path=data_path,
                    meta=False,  **kwargs):
     """ Get the solar radiation data
 
-    Args:
-        lat (float): Latitude of the place
-        lng (float): lnggitude of the place
-        year (str): String of the year in the format '2017/'
-        filename (str): Filename of the data to be downloaded
-        path (str): Data path
-        force_download (bool): Force download data
-        timeseries (bool): Output radiation timeseries
-        meta (bool): Output radiation metadata
+    Calls request_nsrdb_data if data is not found in path.
 
-    Returns:
+    Parameters
+    ----------
+        lat (float):
+            Latitude in degrees
+        lng (float):
+            Longtitude in degrees
+        year (str):
+            Year of data
+        filename (str): optional
+            Filename of the data
+        path (os.PathLike):
+            Path to save the data
+        force_download (bool): optional
+            Force the data to be download. Otherwise look for data in folder.
+        timeseries (bool): optional
+            false or true for returing timeseries data
+        meta (bool): optional
+            false or true for returing meta data
+        kwargs (dict):
+            Dictionary with api_key to request data
+
+    Returns
+    -------
         bool: Description of return value
     """
-    # If you don't provide a filename choose lat and lng.
+
+    # If you don't provide a filename use lat and lng.
     if not filename:
         filename = f'{lat:.4f}_{lng:.4f}.csv'
         logger.warning('No filename provided.'
-                       'Using Longitude and latitude instead')
+                       'Using Longitude and latitude for filename instead')
     else:
-        # Include .csv to filename 
+        # Include .csv to filename if it does not have it.
         if filename[-4:] != '.csv':
             filename = filename + '.csv'
 
@@ -76,15 +130,11 @@ def get_nsrdb_data(lat, lng, year, filename=None, path=data_path,
 
     # If force download or file does not exists
     if force_download or not timeseries_filename.is_file():
-        logger.info('Downloading timeseries from NSRCB')
-        _ = request_nsrdb_data(lng, lat, year,
-                timeseries_filename=timeseries_filename,
-                        meta_path=meta_path, **kwargs)
-        if isinstance(_, pd.DataFrame):
-            logger.info(f'Data created in {timeseries_filename}')
-        else:
-            logger.error('Data downloading failed. Check API.')
-            sys.exit(1)
+        logger.info('Downloading timeseries from NSRDB.')
+        request_nsrdb_data(lat, lng, year,
+                           timeseries_filename=timeseries_filename,
+                           meta_path=meta_path, **kwargs)
+        logger.info(f'Data created in {timeseries_filename}')
     else:
         logger.info(f'File found in {timeseries_filename}')
 
@@ -101,43 +151,64 @@ def get_nsrdb_data(lat, lng, year, filename=None, path=data_path,
         return (data)
 
 
-def request_nsrdb_data(lng, lat, year, timeseries_filename, meta_path, **kwargs):
-    """ NRSDB API
-    Request to the radiation data from the NSRDB API. Default columns requested.
+def request_nsrdb_data(lat, lng, year, timeseries_filename, meta_path,
+    utc='false', leap_year='false', interval=60, **kwargs):
+    """ NRSDB request function
+
+    Request the radiation data from the NSRDB API. Default columns requested.
+
     If needed more columns a modification to attributes variables is needed.
 
-    Args:
-        lon (float): lnggitude in degrees
-        lat (float): latitude in degrees
-        year (str): year in str format with a backslash at the end (2017/)
-        path (str): data path
-        filename (str): filename of data
-        kwargs (dict): Dictionary with api_key to request data
+    UTC by default is false because if the data is going to be used with SAM
+    it needs to be in the local time zone. If used with SWITCH needs to be true
+    because switch load projections are in UTC.
+
+    Parameters
+    ----------
+        lat (float):
+            Latitude in degrees
+        lng (float):
+            Longtitude in degrees
+        year (str):
+            Year of data
+        timeseries_filename (str):
+            Filename of the timeseries data
+        meta_path (str):
+            Folder path of the meta data
+        utc (str): optional
+            false or true for utc time data
+        leap_year (str): optional
+            Corresponding to the year above
+        interval (str): optional
+            This value determines data resolution. Either 30 minute or 60
+            minute intervals are available.
+        kwargs (dict):
+            Dictionary with api_key to request data
+
     Returns
-        pd.DataFrame: Solar radiation Time series
+    ----------
+        nothing
     """
+
+    # TODO: Implement a better way to handle if api_key is not found.
+    # Use environment variable if not found in kwargs
     if not 'api_key' in kwargs:
         api_key = os.getenv('api_key') #kwargs['api_key'] # Personal API key
     else:
         api_key = kwargs['api_key']
+
+    # Raise if api_key not found
     if not api_key:
         raise NameError('api_key not found. Please included it in .env or manually')
 
-
+    # TODO: Include more attributes using kwargs.
     if not year == 'tmy':
         attributes = ('ghi,dhi,dni,wind_speed,wind_direction,'
                       'air_temperature,solar_zenith_angle')
     else:
-        logger.info('tmy attributes')
+        logger.info('tmy attributes selected')
         attributes = ('ghi,dhi,dni,wind_speed,'
                      'air_temperature')
-
-    leap_year = 'false' # corresponding to the year above. Check here: https://kalender-365.de/leap-years.php
-
-    utc = 'true' #This needs to be taken into account when exporting to SWITCH, as SWITCH load projections are in UTC
-
-    # NOTE: In order to use the NSRDB data in SAM, you must specify UTC
-    # as 'false'. SAM requires the data to be in the local time zone.
 
     # New url to include physical model 3
     url = 'http://developer.nrel.gov/api/solar/nsrdb_psm3_download.csv'
@@ -147,15 +218,20 @@ def request_nsrdb_data(lng, lat, year, timeseries_filename, meta_path, **kwargs)
         'wkt': f'POINT({lng:.4f} {lat:.4f})',
         'attributes': attributes,
         'email': 'mail@gmail.com',
-        'names': year,
-        'interval' : '60'
+        'names': year, # Year information
+        'interval' : str(interval),
+        'utc': utc,
+        'leap_year': leap_year,
     }
 
+    # Include kwargs in the params
     params.update(kwargs)
+
+    # If verbose print params to request
     if kwargs['verbose']:
         pp.pprint(params)
 
-
+    # TODO: Check if the code below is mandatory to make the request.
     # headers = {
         # 'content-type': "application/x-www-form-urlencoded",
         # 'cache-control': "no-cache"
@@ -165,6 +241,7 @@ def request_nsrdb_data(lng, lat, year, timeseries_filename, meta_path, **kwargs)
     response = requests.get(url, params=params)
     logger.info(f'API Response: {response.status_code}')
     try:
+        # Check if limit in response headers
         limit = int(response.headers['X-RateLimit-Remaining'])
         logger.info(f'Request limit: {limit}')
         if limit <= 10:
@@ -173,33 +250,38 @@ def request_nsrdb_data(lng, lat, year, timeseries_filename, meta_path, **kwargs)
         # TODO: Catch this error
         pass
 
+    # Check if response succeded.
     if response.status_code != 200:
+        # Exit program if response different from 200 and print response.
+        logger.error('Data downloading failed. Check API.')
+        print (response.text)
         print (response.status_code)
         print (response.reason)
         sys.exit(1)
     else:
-        df = pd.read_csv(response.url, header=None, index_col=[0]) # Index col to avoid deleting index columns after export
-        meta = df[:2].reset_index().copy()
+        # Read data from response with index col to avoid deleting index
+        # after exporting
+        data = pd.read_csv(response.url, header=None, index_col=[0])
+
+        # Get the metadata from data
+        meta = data[:2].reset_index().copy()
         meta = meta.rename(columns=meta.iloc[0]).drop(0)
         meta.to_csv(meta_path, index=False)
-        time_series = df[2:].dropna(axis=1).reset_index().copy()
+
+        # Get the timeseries from data
+        time_series = data[2:].dropna(axis=1).reset_index().copy()
         time_series = time_series.rename(columns=time_series.iloc[0]).drop(0)
-
-        # Remove whitespace with underscore from columns name
-        # time_series.columns = time_series.columns.str.replace(' ', '_')
-
         time_series.to_csv(timeseries_filename, index=False)
 
-        return (time_series)
 
 if __name__ == "__main__":
-    site_info = {'lat': 19.30,
-                 'lng': -99,
+    site_info = {'lat': 33.21,
+                 'lng': -97.12,
                  'force_download': True,
-                 'year': str(2014),
+                 'year': str(2012),
                  'verbose': True,
-                 'interval': '60'
+                 'interval': 60
                 }
 
     df = nsrdb(**site_info)
-    print (df)
+    print (df.head())
