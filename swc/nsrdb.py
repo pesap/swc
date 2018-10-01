@@ -36,7 +36,7 @@ def nsrdb(lat, lng, year, filename=None, force_download=False,
 
     This function pre-process the request.
 
-    NOTE: This function might disappear in the future
+    NOTE: This function might change in the future
     Parameters
     ----------
         lat (float):
