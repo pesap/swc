@@ -228,7 +228,7 @@ def request_nsrdb_data(lat, lng, year, timeseries_filename, meta_path,
     params.update(kwargs)
 
     # If verbose print params to request
-    if kwargs['verbose']:
+    if "verbose" in kwargs:
         pp.pprint(params)
 
     # TODO: Check if the code below is mandatory to make the request.
