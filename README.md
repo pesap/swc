@@ -32,6 +32,12 @@ To install using `pip`
 pip install swc
 ```
 
+To upgrade
+
+```bash
+pip install --upgrade swc
+```
+
 ## How to use
 Using the solar radiation data as input, we implemented an easy way to change the configuration parameters to simulate the performance of a PV system.
 
