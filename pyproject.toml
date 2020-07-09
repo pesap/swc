@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "swc"
-version = "0.6.3"
+version = "0.6.4"
 description = "Solar PV performance simulator"
 authors = ["pesap <pesapsanchez@gmail.com>"]
 license = "MIT"
