@@ -17,9 +17,11 @@ class PySSC:
 
 		if sys.platform == 'win32' or sys.platform == 'cygwin':
 			if 8*struct.calcsize("P") == 64:
-				self.pdll = CDLL("ssc.dll")
+				self.pdll = CDLL(str(Path(__file__).parents[0] /
+                         "ssc.dll"))
 			else:
-				self.pdll = CDLL("ssc.dll")
+				self.pdll = CDLL(str(Path(__file__).parents[0] /
+                         "ssc.dll"))
 		elif sys.platform == 'darwin':
 			self.pdll = CDLL(Path(__file__).parents[0] / "ssc.dylib")
 		elif sys.platform == 'linux2':
