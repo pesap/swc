@@ -4,7 +4,7 @@
 #### SWC 
 > Simplified solar performance simulator
 
-[![MIT License](https://img.shields.io/badge/license-MIT-007EC7.svg?style=flat-square)](/LICENSE) [![GitHub last commit](https://img.shields.io/github/last-commit/google/skia.svg?style=flat-square)](https://github.com/pesap/swc) [![Version](https://img.shields.io/github/v/tag/pesap/swc?style=flat-square)](https://img.shields.io/github/v/tag/pesap/swc?style=flat-square) ![PyPI](https://img.shields.io/pypi/v/swc?style=flat-square)
+[![MIT License](https://img.shields.io/badge/license-MIT-007EC7.svg?style=flat-square)](/LICENSE) [![GitHub last commit](https://img.shields.io/github/last-commit/pesap/swc?style=flat-square)](https://github.com/pesap/swc/commits/main) [![Version](https://img.shields.io/github/v/tag/pesap/swc?style=flat-square)](https://img.shields.io/github/v/tag/pesap/swc?style=flat-square) [![PyPI](https://img.shields.io/pypi/v/swc?style=flat-square)](https://pypi.org/project/swc/)
 
 <br/>
 
