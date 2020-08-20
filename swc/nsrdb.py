@@ -211,7 +211,7 @@ def request_nsrdb_data(lat, lng, year, timeseries_filename, meta_path,
                      'air_temperature')
 
     # New url to include physical model 3
-    url = 'https://developer.nrel.gov/api/solar/nsrdb_psm3_download.csv'
+    url = 'https://developer.nrel.gov/api/v2/solar/nsrdb_psm3_download.csv'
 
     params = {
         'api_key': api_key,
