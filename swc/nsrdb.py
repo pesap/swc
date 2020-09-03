@@ -257,7 +257,7 @@ def request_nsrdb_data(
     params.update(kwargs)
 
     # If verbose print params to request
-    if kwargs.get("verbose"):
+    if kwargs.get("verbose", False) == True:
         pp.pprint(params)
 
     # TODO: Check if the code below is mandatory to make the request.
