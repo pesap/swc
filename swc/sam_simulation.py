@@ -7,9 +7,6 @@ macOS SDK.
 This script requires `pandas` and `numpy` to be insalled within the python
 environment you are running this script
 
-TODO:
-
-
 See https://sam.nrel.gov/sites/default/files/content/virtual_conf_july_2013/07-sam-virtual-conference-2013-woodcock.pdf
 
 """
@@ -79,7 +76,7 @@ def sam(lat, lng, filename, force_download, year, verbose):
     sam, _ = sam_simulation(solar_data, **z)
     pass
 
-def sam_simulation(data, verbose=False, **kwargs):
+def sam_simulation(weather, meta, verbose=False, **kwargs):
     """ SAM solar PV simulation
 
     Perform a PVWATTS5 simulation using some input information about the
@@ -87,20 +84,19 @@ def sam_simulation(data, verbose=False, **kwargs):
 
     Parameters
     ----------
-        data (pd.DataFrame): Solar radiation dataframe
+        weather (pd.DataFrame): Solar radiation dataframe
+        meta (pd.DataFrame): NSRDB metadata
         kwargs (dictionary): Dictionary containing simulation parameters
 
     Returns
     ----------
-        CP (float): Capacity factor
+        CF (float): Capacity factor
         Generation (float): Generation over the year of simulation
         meto_data (pd.DataFrame): Dataframe with hourly generation
     """
 
     params = {'lat': kwargs['lat'],
               'lng': kwargs['lng'],
-              'timezone': kwargs['timezone'],
-              'elevation': kwargs['elevation'],
               'system_capacity': kwargs['system_capacity'],
               'dc_ac_ratio': kwargs['dc_ac_ratio'],
               'inv_eff': kwargs['inv_eff'],
@@ -122,15 +118,15 @@ def sam_simulation(data, verbose=False, **kwargs):
     ssc.data_set_number(wfd, 'lon', params['lng'])
     ssc.data_set_number(wfd, 'tz', params['timezone'])
     ssc.data_set_number(wfd, 'elev', params['elevation'])
-    ssc.data_set_array(wfd, 'year', data.index.year)
-    ssc.data_set_array(wfd, 'month', data.index.month)
-    ssc.data_set_array(wfd, 'day', data.index.day)
-    ssc.data_set_array(wfd, 'hour', data.index.hour)
-    ssc.data_set_array(wfd, 'minute', data.index.minute)
-    ssc.data_set_array(wfd, 'dn', data['DNI'])
-    ssc.data_set_array(wfd, 'df', data['DHI'])
-    ssc.data_set_array(wfd, 'wspd', data['Wind Speed'])
-    ssc.data_set_array(wfd, 'tdry', data['Temperature'])
+    ssc.data_set_array(wfd, 'year', weather.index.year)
+    ssc.data_set_array(wfd, 'month', weather.index.month)
+    ssc.data_set_array(wfd, 'day', weather.index.day)
+    ssc.data_set_array(wfd, 'hour', weather.index.hour)
+    ssc.data_set_array(wfd, 'minute', weather.index.minute)
+    ssc.data_set_array(wfd, 'dn', weather['DNI'])
+    ssc.data_set_array(wfd, 'df', weather['DHI'])
+    ssc.data_set_array(wfd, 'wspd', weather['Wind Speed'])
+    ssc.data_set_array(wfd, 'tdry', weather['Temperature'])
 
     # Create SAM compliant object  
     dat = ssc.data_create()
@@ -168,15 +164,15 @@ def sam_simulation(data, verbose=False, **kwargs):
     ssc.module_exec(mod, dat)
 
     # System AC generation
-    data['ac_generation'] = np.array(ssc.data_get_array(dat, 'ac'))
-    data['dc_generation'] = np.array(ssc.data_get_array(dat, 'dc'))
-    data['generation'] = np.array(ssc.data_get_array(dat, 'gen'))
+    weather['ac_generation'] = np.array(ssc.data_get_array(dat, 'ac'))
+    weather['dc_generation'] = np.array(ssc.data_get_array(dat, 'dc'))
+    weather['generation'] = np.array(ssc.data_get_array(dat, 'gen'))
 
     # Plane of array (POA) irradiance in kWh
-    data['POA'] = np.array(ssc.data_get_array(dat, 'poa'))
+    weather['POA'] = np.array(ssc.data_get_array(dat, 'poa'))
 
     # Module temperature in ºC
-    data['TCell'] = np.array(ssc.data_get_array(dat, 'tcell'))
+    weather['TCell'] = np.array(ssc.data_get_array(dat, 'tcell'))
 
     capacity_factor = ssc.data_get_number(dat, 'capacity_factor')
     total_energy = ssc.data_get_number(dat, 'annual_energy')
@@ -217,7 +213,7 @@ def sam_simulation(data, verbose=False, **kwargs):
         # data.to_csv(output_path / 'test.csv')
         # return (data, (CP, generation))
 
-    return (data, (capacity_factor, total_energy))
+    return (weather, (capacity_factor, total_energy))
 
 
 if __name__ == "__main__":
