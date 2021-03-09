@@ -228,19 +228,13 @@ def request_nsrdb_data(
 
     # TODO: Include more attributes using kwargs.
     if not year == "tmy":
-        attributes = (
-            "clearsky_dhi,",
-            "clearsky_dni,",
-            "clearsky_ghi,",
-            "ghi,dhi,dni,wind_speed,wind_direction,"
-            "air_temperature,solar_zenith_angle",
-        )
+        # New url to include physical model 3
+        url = "https://developer.nrel.gov/api/nsrdb/v2/solar/psm3-download.csv"
     else:
+        url = "https://developer.nrel.gov/api/nsrdb/v2/solar/psm3-tmy-download.csv"
         logger.info("tmy attributes selected")
-        attributes = "ghi,dhi,dni,wind_speed," "air_temperature"
 
-    # New url to include physical model 3
-    url = "https://developer.nrel.gov/api/nsrdb/v2/solar/psm3-download.csv"
+
 
     params = {
         "api_key": api_key,
