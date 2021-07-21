@@ -76,7 +76,7 @@ def sam(lat, lng, filename, force_download, year, verbose):
     sam, _ = sam_simulation(solar_data, **z)
     pass
 
-def sam_simulation(weather, meta, verbose=False, **kwargs):
+def sam_simulation(weather, meta=None, verbose=False, **kwargs):
     """ SAM solar PV simulation
 
     Perform a PVWATTS5 simulation using some input information about the
@@ -106,8 +106,10 @@ def sam_simulation(weather, meta, verbose=False, **kwargs):
               'gcr': kwargs['gcr'],
               'azimuth': kwargs['azimuth'],
               'interval': kwargs['interval'],
+              'timezone': kwargs['timezone'],
+              'elevation': kwargs['elevation'],
               }
-
+    print(kwargs["elevation"])
     if verbose:
         print ({key: value for key, value in params.items()})
 
@@ -222,14 +224,16 @@ if __name__ == "__main__":
                  'force_download': False,
                  'year': str(2012),
                  'verbose': True,
+                 "api_key": "nGrPxGQ3uqfzIiUKI4NMU8HZQl3RkI76AHYKLxi6",
                  'interval': 60
                 }
     df = nsrdb(**site_info)
     meta_data = get_nsrdb_data(meta=True, **site_info)
     simulation_params = default_sam_params()
-    simulation_params['elevation'] = meta_data['Elevation'].values
-    simulation_params['timezone'] = meta_data['Time Zone'].values
+    simulation_params['elevation'] = meta_data['Elevation']
+    simulation_params['timezone'] = meta_data['Time Zone']
     simulation_params['tilt'] = site_info['lat']
+    breakpoint()
 
     # Include lat and lng to simulation params
     simulation_params.update(site_info)

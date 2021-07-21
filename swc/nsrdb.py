@@ -157,7 +157,7 @@ def get_nsrdb_data(
     # If you want metadata only
     if meta:
         file_path = meta_path.joinpath(filename)
-        meta = pd.read_csv(meta_path)
+        meta = pd.read_csv(meta_path).to_dict("records")[0]
         return meta
 
     if timeseries:
