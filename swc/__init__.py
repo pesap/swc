@@ -9,8 +9,8 @@ load_dotenv(dotenv_path=env_path)
 ROOT = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, ROOT)
 
-from cli import main
-from .__version__ import __version__
+# from cli import main
+# from .__version__ import __version__
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

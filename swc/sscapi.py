@@ -1,415 +1,409 @@
-# #####################################################################
-#
-#   System Simulation Core (SSC) Python Wrapper
-#   Author: Aron Dobos @ NREL and Steven Janzou @ NREL
-#
-# #####################################################################
+#  Created with SAM version 2019.1.21
 
-
-import string, sys, struct, os, numpy
+import os
+import sys
 from ctypes import *
-from pathlib import Path
+c_number = c_double  # must be c_double or c_float depending on how defined in sscapi.h
 
-c_number = c_float # must be c_double or c_float depending on how defined in sscapi.h
+
 class PySSC:
+    def __init__(self):
+        this_directory = os.path.abspath(os.path.dirname(__file__))
 
-	def __init__(self):
+        if sys.platform == 'win32' or sys.platform == 'cygwin':
+            self.pdll = CDLL(os.path.join(this_directory, "ssc.dll"))
+        elif sys.platform == 'darwin':
+            self.pdll = CDLL(os.path.join(this_directory, "libssc.dylib"))
+        elif sys.platform == 'linux':
+            self.pdll = CDLL(os.path.join(this_directory, 'libssc.so'))
+        else:
+            print('Platform not supported ', sys.platform)
 
-		if sys.platform == 'win32' or sys.platform == 'cygwin':
-			if 8*struct.calcsize("P") == 64:
-				self.pdll = CDLL(str(Path(__file__).parents[0] /
-                         "ssc.dll"))
-			else:
-				self.pdll = CDLL(str(Path(__file__).parents[0] /
-                         "ssc.dll"))
-		elif sys.platform == 'darwin':
-			self.pdll = CDLL(Path(__file__).parents[0] / "ssc.dylib")
-		elif sys.platform == 'linux2':
-			self.pdll = CDLL('./ssc.so')   # instead of relative path, require user to have on LD_LIBRARY_PATH
-		else:
-			print ("Platform not supported ", sys.platform)
+    INVALID = 0
+    STRING = 1
+    NUMBER = 2
+    ARRAY = 3
+    MATRIX = 4
+    INPUT = 1
+    OUTPUT = 2
+    INOUT = 3
 
+    def version(self):
+        self.pdll.ssc_version.restype = c_int
+        return self.pdll.ssc_version()
 
-	INVALID=0
-	STRING=1
-	NUMBER=2
-	ARRAY=3
-	MATRIX=4
+    def data_create(self):
+        self.pdll.ssc_data_create.restype = c_void_p
+        return self.pdll.ssc_data_create()
 
-	INPUT=1
-	OUTPUT=2
-	INOUT=3
+    def data_free(self, p_data):
+        self.pdll.ssc_data_free(c_void_p(p_data))
 
-	def version(self):
-		self.pdll.ssc_version.restype = c_int
-		return self.pdll.ssc_version()
+    def data_clear(self, p_data):
+        self.pdll.ssc_data_clear(c_void_p(p_data))
 
-	def data_create(self):
-		self.pdll.ssc_data_create.restype = c_void_p
-		return self.pdll.ssc_data_create()
+    def data_unassign(self, p_data, name):
+        self.pdll.ssc_data_unassign(c_void_p(p_data), c_char_p(name))
 
-	def data_free(self, p_data):
-		self.pdll.ssc_data_free( c_void_p(p_data) )
+    def data_query(self, p_data, name):
+        self.pdll.ssc_data_query.restype = c_int
+        return self.pdll.ssc_data_query(c_void_p(p_data), c_char_p(name))
 
-	def data_clear(self, p_data):
-		self.pdll.ssc_data_clear( c_void_p(p_data) )
+    def data_first(self, p_data):
+        self.pdll.ssc_data_first.restype = c_char_p
+        return self.pdll.ssc_data_first(c_void_p(p_data))
 
-	def data_unassign(self, p_data, name):
-		self.pdll.ssc_data_unassign( c_void_p(p_data), c_char_p(name.encode('utf-8')) )
+    def data_next(self, p_data):
+        self.pdll.ssc_data_next.restype = c_char_p
+        return self.pdll.ssc_data_next(c_void_p(p_data))
 
-	def data_query(self, p_data, name):
-		self.pdll.ssc_data_query.restype = c_int
-		return self.pdll.ssc_data_query( c_void_p(p_data), c_char_p(name.encode('utf-8')) )
+    def data_set_string(self, p_data, name, value):
+        self.pdll.ssc_data_set_string(c_void_p(p_data), c_char_p(name), c_char_p(value))
 
-	def data_first(self, p_data):
-		self.pdll.ssc_data_first.restype = c_char_p
-		return self.pdll.ssc_data_first( c_void_p(p_data) )
+    def data_set_number(self, p_data, name, value):
+        self.pdll.ssc_data_set_number(c_void_p(p_data), c_char_p(name), c_number(value))
 
-	def data_next(self, p_data):
-		self.pdll.ssc_data_next.restype = c_char_p
-		return self.pdll.ssc_data_next( c_void_p(p_data) )
+    def data_set_array(self, p_data, name, parr):
+        count = len(parr)
+        arr = (c_number * count)()
+        arr[:] = parr  # set all at once instead of looping
+        return self.pdll.ssc_data_set_array(c_void_p(p_data), c_char_p(name), pointer(arr), c_int(count))
 
-	def data_set_string(self, p_data, name, value):
-		self.pdll.ssc_data_set_string( c_void_p(p_data), c_char_p(name.encode('utf-8')), c_char_p(value.encode('utf-8')) )
+    def data_set_array_from_csv(self, p_data, name, fn):
+        f = open(fn, 'rb')
+        data = []
+        for line in f:
+            data.extend([n for n in map(float, line.split(b','))])
+        f.close()
+        return self.data_set_array(p_data, name, data)
 
-	def data_set_number(self, p_data, name, value):
-		self.pdll.ssc_data_set_number( c_void_p(p_data), c_char_p(name.encode('utf-8')), c_number(value) )
+    def data_set_matrix(self, p_data, name, mat):
+        nrows = len(mat)
+        ncols = len(mat[0])
+        size = nrows * ncols
+        arr = (c_number * size)()
+        idx = 0
+        for r in range(nrows):
+            for c in range(ncols):
+                arr[idx] = c_number(mat[r][c])
+                idx = idx + 1
+        return self.pdll.ssc_data_set_matrix(c_void_p(p_data), c_char_p(name), pointer(arr), c_int(nrows), c_int(ncols))
 
-	def data_set_array(self,p_data,name,parr):
-		count = len(parr)
-		arr = (c_number*count)()
-		arr[:] = parr # set all at once instead of looping
-			
-		return self.pdll.ssc_data_set_array( c_void_p(p_data), c_char_p(name.encode('utf-8')),pointer(arr), c_int(count))
+    def data_set_matrix_from_csv(self, p_data, name, fn):
+        f = open(fn, 'rb')
+        data = []
+        for line in f:
+            lst = ([n for n in map(float, line.split(b','))])
+            data.append(lst)
+        f.close()
+        return self.data_set_matrix(p_data, name, data)
 
-	def data_set_matrix(self,p_data,name,mat):
-		nrows = len(mat)
-		ncols = len(mat[0])
-		size = nrows*ncols
-		arr = (c_number*size)()
-		idx=0
-		for r in range(nrows):
-			for c in range(ncols):
-				arr[idx] = c_number(mat[r][c])
-				idx=idx+1
-		return self.pdll.ssc_data_set_matrix( c_void_p(p_data), c_char_p(name.encode('utf-8')), pointer(arr), c_int(nrows), c_int(ncols))
+    def data_set_table(self, p_data, name, tab):
+        return self.pdll.ssc_data_set_table(c_void_p(p_data), c_char_p(name), c_void_p(tab))
 
-	def data_set_table(self,p_data,name,tab):
-		return self.pdll.ssc_data_set_table( c_void_p(p_data), c_char_p(name.encode('utf-8')), c_void_p(tab) );
+    def data_get_string(self, p_data, name):
+        self.pdll.ssc_data_get_string.restype = c_char_p
+        return self.pdll.ssc_data_get_string(c_void_p(p_data), c_char_p(name))
 
-	def data_get_string(self, p_data, name):
-		self.pdll.ssc_data_get_string.restype = c_char_p
-		return self.pdll.ssc_data_get_string( c_void_p(p_data), c_char_p(name.encode('utf-8')) )
+    def data_get_number(self, p_data, name):
+        val = c_number(0)
+        self.pdll.ssc_data_get_number(c_void_p(p_data), c_char_p(name), byref(val))
+        return val.value
 
-	def data_get_number(self, p_data, name):
-		val = c_number(0)
-		self.pdll.ssc_data_get_number( c_void_p(p_data), c_char_p(name.encode('utf-8')), byref(val) )
-		return val.value
+    def data_get_array(self, p_data, name):
+        count = c_int()
+        self.pdll.ssc_data_get_array.restype = POINTER(c_number)
+        parr = self.pdll.ssc_data_get_array(c_void_p(p_data), c_char_p(name), byref(count))
+        arr = parr[0:count.value]  # extract all at once
+        return arr
 
-	def data_get_array(self,p_data,name):
-		count = c_int()
-		self.pdll.ssc_data_get_array.restype = POINTER(c_number)
-		parr = self.pdll.ssc_data_get_array( c_void_p(p_data), c_char_p(name.encode('utf-8')), byref(count))
-		arr = parr[0:count.value] # extract all at once			
-		return arr
+    def data_get_matrix(self, p_data, name):
+        nrows = c_int()
+        ncols = c_int()
+        self.pdll.ssc_data_get_matrix.restype = POINTER(c_number)
+        parr = self.pdll.ssc_data_get_matrix(c_void_p(p_data), c_char_p(name), byref(nrows), byref(ncols))
+        idx = 0
+        mat = []
+        for r in range(nrows.value):
+            row = []
+            for c in range(ncols.value):
+                row.append(float(parr[idx]))
+                idx = idx + 1
+            mat.append(row)
+        return mat
 
-	def data_get_matrix(self,p_data,name):
-		nrows = c_int()
-		ncols = c_int()
-		self.pdll.ssc_data_get_matrix.restype = POINTER(c_number)
-		parr = self.pdll.ssc_data_get_matrix( c_void_p(p_data), c_char_p(name.encode('utf-8')), byref(nrows), byref(ncols) )
-		idx = 0
-		mat = []
-		for r in range(nrows.value):
-			row = []
-			for c in range(ncols.value):
-				row.append( float(parr[idx]) )
-				idx = idx + 1
-			mat.append(row)
-		return mat
-		
-	# don't call data_free() on the result, it's an internal
-	# pointer inside SSC
-	def data_get_table(self,p_data,name): 
-		return self.pdll.ssc_data_get_table( c_void_p(p_data), name );
+    # don't call data_free() on the result, it's an internal
+    # pointer inside SSC
+    def data_get_table(self, p_data, name):
+        return self.pdll.ssc_data_get_table(c_void_p(p_data), name)
 
-	def module_entry(self,index):
-		self.pdll.ssc_module_entry.restype = c_void_p
-		return self.pdll.ssc_module_entry( c_int(index) )
+    def module_entry(self, index):
+        self.pdll.ssc_module_entry.restype = c_void_p
+        return self.pdll.ssc_module_entry(c_int(index))
 
-	def entry_name(self,p_entry):
-		self.pdll.ssc_entry_name.restype = c_char_p
-		return self.pdll.ssc_entry_name( c_void_p(p_entry) )
+    def entry_name(self, p_entry):
+        self.pdll.ssc_entry_name.restype = c_char_p
+        return self.pdll.ssc_entry_name(c_void_p(p_entry))
 
-	def entry_description(self,p_entry):
-		self.pdll.ssc_entry_description.restype = c_char_p
-		return self.pdll.ssc_entry_description( c_void_p(p_entry) )
+    def entry_description(self, p_entry):
+        self.pdll.ssc_entry_description.restype = c_char_p
+        return self.pdll.ssc_entry_description(c_void_p(p_entry))
 
-	def entry_version(self,p_entry):
-		self.pdll.ssc_entry_version.restype = c_int
-		return self.pdll.ssc_entry_version( c_void_p(p_entry) )
+    def entry_version(self, p_entry):
+        self.pdll.ssc_entry_version.restype = c_int
+        return self.pdll.ssc_entry_version(c_void_p(p_entry))
 
-	def module_create(self,name):
-		self.pdll.ssc_module_create.restype = c_void_p
-		return self.pdll.ssc_module_create( c_char_p(name.encode('utf-8')) )
+    def module_create(self, name):
+        self.pdll.ssc_module_create.restype = c_void_p
+        return self.pdll.ssc_module_create(c_char_p(name))
 
-	def module_free(self,p_mod):
-		self.pdll.ssc_module_free( c_void_p(p_mod) )
+    def module_free(self, p_mod):
+        self.pdll.ssc_module_free(c_void_p(p_mod))
 
-	def module_var_info(self,p_mod,index):
-		self.pdll.ssc_module_var_info.restype = c_void_p
-		return self.pdll.ssc_module_var_info( c_void_p(p_mod), c_int(index) )
+    def module_var_info(self, p_mod, index):
+        self.pdll.ssc_module_var_info.restype = c_void_p
+        return self.pdll.ssc_module_var_info(c_void_p(p_mod), c_int(index))
 
-	def info_var_type( self, p_inf ):
-		return self.pdll.ssc_info_var_type( c_void_p(p_inf) )
+    def info_var_type(self, p_inf):
+        return self.pdll.ssc_info_var_type(c_void_p(p_inf))
 
-	def info_data_type( self, p_inf ):
-		return self.pdll.ssc_info_data_type( c_void_p(p_inf) )
+    def info_data_type(self, p_inf):
+        return self.pdll.ssc_info_data_type(c_void_p(p_inf))
 
-	def info_name( self, p_inf ):
-		self.pdll.ssc_info_name.restype = c_char_p
-		return self.pdll.ssc_info_name( c_void_p(p_inf) )
+    def info_name(self, p_inf):
+        self.pdll.ssc_info_name.restype = c_char_p
+        return self.pdll.ssc_info_name(c_void_p(p_inf))
 
-	def info_label( self, p_inf ):
-		self.pdll.ssc_info_label.restype = c_char_p
-		return self.pdll.ssc_info_label( c_void_p(p_inf) )
+    def info_label(self, p_inf):
+        self.pdll.ssc_info_label.restype = c_char_p
+        return self.pdll.ssc_info_label(c_void_p(p_inf))
 
-	def info_units( self, p_inf ):
-		self.pdll.ssc_info_units.restype = c_char_p
-		return self.pdll.ssc_info_units( c_void_p(p_inf) )
+    def info_units(self, p_inf):
+        self.pdll.ssc_info_units.restype = c_char_p
+        return self.pdll.ssc_info_units(c_void_p(p_inf))
 
-	def info_meta( self, p_inf ):
-		self.pdll.ssc_info_meta.restype = c_char_p
-		return self.pdll.ssc_info_meta( c_void_p(p_inf) )
+    def info_meta(self, p_inf):
+        self.pdll.ssc_info_meta.restype = c_char_p
+        return self.pdll.ssc_info_meta(c_void_p(p_inf))
 
-	def info_group( self, p_inf ):
-		self.pdll.ssc_info_group.restype = c_char_p
-		return self.pdll.ssc_info_group( c_void_p(p_inf) )
+    def info_group(self, p_inf):
+        self.pdll.ssc_info_group.restype = c_char_p
+        return self.pdll.ssc_info_group(c_void_p(p_inf))
 
-	def info_uihint( self, p_inf ):
-		self.pdll.ssc_info_uihint.restype = c_char_p
-		return self.pdll.ssc_info_uihint( c_void_p(p_inf) )
+    def info_uihint(self, p_inf):
+        self.pdll.ssc_info_uihint.restype = c_char_p
+        return self.pdll.ssc_info_uihint(c_void_p(p_inf))
 
-	def module_exec( self, p_mod, p_data ):
-		self.pdll.ssc_module_exec.restype = c_int
-		return self.pdll.ssc_module_exec( c_void_p(p_mod), c_void_p(p_data) )
-		ssc_module_exec_simple_nothread
-		
-	def module_exec_simple_no_thread( self, modname, data ):
-		self.pdll.ssc_module_exec_simple_nothread.restype = c_char_p;
-		return self.pdll.ssc_module_exec_simple_nothread( c_char_p(modname.encode('utf-8')), c_void_p(data) );
+    def info_required(self, p_inf):
+        self.pdll.ssc_info_required.restype = c_char_p
+        return self.pdll.ssc_info_required(c_void_p(p_inf))
 
-	def module_log( self, p_mod, index ):
-		log_type = c_int()
-		time = c_float()
-		self.pdll.ssc_module_log.restype = c_char_p
-		return self.pdll.ssc_module_log( c_void_p(p_mod), c_int(index), byref(log_type), byref(time) )
+    def info_constraints(self, p_inf):
+        self.pdll.ssc_info_constraints.restype = c_char_p
+        return self.pdll.ssc_info_constraints(c_void_p(p_inf))
 
+    def module_exec(self, p_mod, p_data):
+        self.pdll.ssc_module_exec.restype = c_int
+        return self.pdll.ssc_module_exec(c_void_p(p_mod), c_void_p(p_data))
 
-	def module_exec_set_print( self, prn ):
-		return self.pdll.ssc_module_exec_set_print( c_int(prn) );
+    def module_exec_simple_no_thread(self, modname, data):
+        self.pdll.ssc_module_exec_simple_nothread.restype = c_char_p
+        return self.pdll.ssc_module_exec_simple_nothread(c_char_p(modname), c_void_p(data))
 
-if __name__ == "__main__":
+    def module_log(self, p_mod, index):
+        log_type = c_int()
+        time = c_float()
+        self.pdll.ssc_module_log.restype = c_char_p
+        return self.pdll.ssc_module_log(c_void_p(p_mod), c_int(index), byref(log_type), byref(time))
 
-	def setup_wind(ssc, data):
-		ssc.data_set_number( data, 'wind_resource_shear', 0.14 );
-		ssc.data_set_number( data, 'wind_resource_turbulence_coeff', 0.1 );
-		ssc.data_set_number( data, 'system_capacity', 2.4 );
-		ssc.data_set_number( data, 'wind_resource_model_choice', 0 );
-		ssc.data_set_number( data, 'wind_characteristics_weibullK', 2.1 );
-		ssc.data_set_number( data, 'wind_characteristics_class', 7.6 );
-		ssc.data_set_number( data, 'wind_turbine_rotor_diameter', 3.7 );
-		ssc.data_set_array( data, 'wind_turbine_powercurve_windspeeds', [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40 ] );
-		ssc.data_set_array( data, 'wind_turbine_powercurve_powerout', [ 0, 0, 0, 0, 0.08, 0.2, 0.35, 0.6, 1, 1.6, 2, 2.25, 2.35, 2.4, 2.4, 2.37, 2.3, 2.09, 2, 2, 2, 2, 2, 1.98, 1.95, 1.8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ] );
-		ssc.data_set_number( data, 'wind_turbine_cutin', 4 );
-		ssc.data_set_number( data, 'wind_turbine_hub_ht', 15 );
-		ssc.data_set_number( data, 'wind_turbine_max_cp', 0.42 );
-		ssc.data_set_array( data, 'wind_farm_xCoordinates', [ 0 ] );
-		ssc.data_set_array( data, 'wind_farm_yCoordinates', [ 0 ] );
-		ssc.data_set_number( data, 'wind_farm_losses_percent', 0 );
-		ssc.data_set_number( data, 'wind_farm_wake_model', 0 );
-		ssc.data_set_number( data, 'adjust:constant', 0 );	
-		
+    def module_exec_set_print(self, prn):
+        return self.pdll.ssc_module_exec_set_print(c_int(prn))
 
 
-	def run_windmodel( ssc, data ):
-		# run PV system simulation
-		mod = ssc.module_create("windpower")	
-		ssc.module_exec_set_print( 0 );
-		if ssc.module_exec(mod, data) == 0:
-			print ('wind power simulation error')
-			idx = 1
-			msg = ssc.module_log(mod, 0)
-			while (msg != None):
-				print ('\t: ' + msg)
-				msg = ssc.module_log(mod, idx)
-				idx = idx + 1
-		else:
-			ann = ssc.data_get_number(data, "annual_energy")
-			print ('wind power Simulation ok, annual energy (kwh) =', ann)
+# Functions to simulate compute modules through dictionaries
+def ssc_sim_from_dict(data_pydict):
+    """ Run a technology compute module using parameters in a dict.
+    Parameters
+    ----------
+    data_pydict: dict
+        Required keys are:
+            tech_model: str
+                name of the compute module to run.
+            financial_model: str or None
+                name of the financial model to apply. If None, no financial
+                model is used.
+        Other keys are names of args for the selected tech_model or
+        financial_model.
+    Returns
+    -------
+    (dict): dict
+        keys are outputs from the selected compute module.
+    """
+    tech_model_name = data_pydict["tech_model"]
+    # Convert python dictionary into ssc var info table
+    data_ssc_tech_model = dict_to_ssc_table(data_pydict, tech_model_name)
 
-		ssc.module_free(mod)
+    financial_model_name = data_pydict["financial_model"]
+    if financial_model_name is None:
+        data_ssc = data_ssc_tech_model
+    else:
+        data_ssc = dict_to_ssc_table_dat(data_pydict, financial_model_name,
+                                         data_ssc_tech_model)
 
-	
-	def run_test1():
-		wf = './WY Southern-Flat Lands.srw';
-		print (wf)
-		
-		ssc = PySSC()
-		dat = ssc.data_create()
-		setup_wind(ssc,dat);
-		ssc.data_set_string( dat, 'wind_resource_filename', wf );
-		run_windmodel( ssc, dat );
-		
-		
-		ssc.data_clear(dat);
-		
-		# read a weather file for this example program
-		# and extract the data from it into a bunch of Python variables
-		# note: this weather data could come from any source
-			
-		# create an SSC data with a bunch of fields
-		wfd = ssc.data_create();
-		ssc.data_set_number( wfd, 'lat', 0);
-		ssc.data_set_number( wfd, 'lon', 0);
-		ssc.data_set_number( wfd, 'elev',  2088);
-		
-		# setup column data types: temp=1,pres=2,3=3,dir=4	
-		ssc.data_set_array( wfd, 'fields', [1,2,4,3,1,2,4,3,1,2,4,3,1,2,4,3] );
-		
-		# setup column measurement heights (meters)
-		ssc.data_set_array( wfd, 'heights', [ 50,50,50,50,80,80,80,80,110,110,110,110,140,140,140,140 ] );
-		
-		# read in the matrix of data corresponding to fields and heights above (should have 8760 rows)	
-		data = numpy.loadtxt(open(wf,"rb"),delimiter=",",skiprows=5);
-		ssc.data_set_matrix( wfd, 'data', data );
-		
-		# instead of setting a string weather file, simply
-		# set the table variable that contains the various fields
-		# with solar resource data
-		ssc.data_set_table( dat, 'wind_resource_data', wfd );	
-		
-		# we can free the resource data table now, since
-		# the previous line copies it all into SSC
-		ssc.data_free(wfd);
-		
-		# set up other PV parameters and run
-		setup_wind( ssc,dat );
-		run_windmodel( ssc, dat );
-		
-		ssc.data_free(dat)
+    return ssc_sim(data_ssc, tech_model_name, financial_model_name)
 
 
-	def setup_pv(ssc, data):
-		ssc.data_set_number( data, 'system_capacity', 4 )
-		ssc.data_set_number( data, 'module_type', 0 )
-		ssc.data_set_number( data, 'array_type', 0 )
-		ssc.data_set_number( data, 'losses', 14 )
-		ssc.data_set_number( data, 'tilt', 15 )
-		ssc.data_set_number( data, 'azimuth', 180 )
-		ssc.data_set_number( data, 'adjust:constant', 0 )
+def ssc_sim(data_ssc, tech_model_name, financial_model_name):
 
-	def run_pvwattsv5( ssc, data ):
-		# run PV system simulation
-		mod = ssc.module_create("pvwattsv5")	
-		ssc.module_exec_set_print( 0 );
-		if ssc.module_exec(mod, data) == 0:
-			print ('PVWatts V5 simulation error')
-			idx = 1
-			msg = ssc.module_log(mod, 0)
-			while (msg != None):
-				print ('\t: ' + msg)
-				msg = ssc.module_log(mod, idx)
-				idx = idx + 1
-		else:
-			ann = ssc.data_get_number(data, "ac_annual")
-			print ('PVWatts V5 Simulation ok, e_net (annual kW)=', ann)
+    # Run the technology model compute module
+    tech_model_return = ssc_cmod(data_ssc, tech_model_name)
+    tech_model_success = tech_model_return[0]
+    tech_model_dict = tech_model_return[1]
 
-		ssc.module_free(mod)
+    # Add tech and financial models back to dictionary
+    tech_model_dict["tech_model"] = tech_model_name
+    tech_model_dict["financial_model"] = financial_model_name
 
-	def run_test2():
-		#wf = 'c:/Users/adobos/Projects/SAMnt/tests/Weather Files/user-germany-potsdam-2011-1-min-samcsv.csv' ;
-		wf = './USA NC Greensboro (TMY2).csv';
+    if (tech_model_success == 0):
+        tech_model_dict["cmod_success"] = 0
+        return tech_model_dict
 
-		print (wf)
-		
-		ssc = PySSC()
-		dat = ssc.data_create()
-		setup_pv(ssc,dat);
-		ssc.data_set_string( dat, 'solar_resource_file', wf );
-		run_pvwattsv5( ssc, dat );
-		
-		
-		ssc.data_clear(dat);
-		
-		# read a weather file for this example program
-		# and extract the data from it into a bunch of Python variables
-		# note: this weather data could come from any source
-		ssc.data_set_string( dat, 'file_name', wf );
-		ssc.module_exec_simple_no_thread( 'wfreader', dat );	
-		lat = ssc.data_get_number(dat, 'lat');
-		lon = ssc.data_get_number(dat, 'lon');
-		tz = ssc.data_get_number(dat, 'tz');
-		elev = ssc.data_get_number(dat, 'elev');
-		year = ssc.data_get_array(dat, 'year');
-		month = ssc.data_get_array(dat, 'month')
-		day = ssc.data_get_array(dat, 'day');
-		hour = ssc.data_get_array(dat, 'hour');
-		minute = ssc.data_get_array(dat, 'minute');
-		beam = ssc.data_get_array(dat, 'beam');
-		diffuse = ssc.data_get_array(dat, 'diffuse');
-		wspd = ssc.data_get_array(dat, 'wspd');
-		tdry = ssc.data_get_array(dat, 'tdry');
-		albedo = ssc.data_get_array(dat, 'albedo');	
-		ssc.data_clear( dat );
-		
-		# create an SSC data with a bunch of fields
-		wfd = ssc.data_create();
-		ssc.data_set_number( wfd, 'lat', lat);
-		ssc.data_set_number( wfd, 'lon', lon);
-		ssc.data_set_number( wfd, 'tz',  tz);
-		ssc.data_set_number( wfd, 'elev',  elev);
-		
-		ssc.data_set_array( wfd, 'year',  year);
-		ssc.data_set_array( wfd, 'month',  month);
-		ssc.data_set_array( wfd, 'day',  day);
-		ssc.data_set_array( wfd, 'hour', hour);
-		
-		# note: if using an hourly TMY file with integrated/averaged
-		# values, do not set the minute column here. otherwise
-		# SSC will assume it is instantaneous data and will not adjust
-		# the sun position in sunrise and sunset hours appropriately
-		# however, if using subhourly data or instantaneous NSRDB data
-		# do explicitly provide the minute data column for sunpos calcs
-		
-		# ssc.data_set_array( wfd, 'minute', minute);
-		
-		
-		ssc.data_set_array( wfd, 'dn', beam);
-		ssc.data_set_array( wfd, 'df', diffuse);
-		ssc.data_set_array( wfd, 'wspd', wspd);
-		ssc.data_set_array( wfd, 'tdry', tdry);
-		ssc.data_set_array( wfd, 'albedo', albedo);
-		
-		# instead of setting a string weather file, simply
-		# set the table variable that contains the various fields
-		# with solar resource data
-		ssc.data_set_table( dat, 'solar_resource_data', wfd );	
-		
-		# we can free the resource data table now, since
-		# the previous line copies it all into SSC
-		ssc.data_free(wfd);
-		
-		# set up other PV parameters and run
-		setup_pv( ssc,dat );
-		run_pvwattsv5( ssc, dat );
-		
-		
-		ssc.data_free(dat);
+    if financial_model_name in [None, "none"]:
+        tech_model_dict["cmod_success"] = 1
+        return tech_model_dict
+
+    # Run the financial model
+    financial_model_return = ssc_cmod(data_ssc, financial_model_name)
+    financial_model_success = financial_model_return[0]
+    financial_model_dict = financial_model_return[1]
+
+    if (financial_model_success == 0):
+        financial_model_dict["cmod_success"] = 0
+        out_err_dict = tech_model_dict.copy()
+        return out_err_dict.update(financial_model_dict)
+
+    # If all models are successful, set boolean true
+    financial_model_dict["cmod_success"] = 1
+
+    # Combine tech and financial model dictionaries
+    out_dict = tech_model_dict.copy()
+    out_dict.update(financial_model_dict)
+
+    return out_dict
 
 
-	run_test1();
-	run_test2();
+def ssc_cmod(dat, name):
+    ssc = PySSC()
+
+    cmod = ssc.module_create(name.encode("utf-8"))
+    ssc.module_exec_set_print(0)
+
+    # Run compute module
+    # Check for simulation errors
+    if ssc.module_exec(cmod, dat) == 0:
+        print(name + ' simulation error')
+        idx = 1
+        msg = ssc.module_log(cmod, 0)
+        while msg is not None:
+            print(' : ' + msg.decode("utf - 8"))
+            msg = ssc.module_log(cmod, idx)
+            idx = idx + 1
+        cmod_err_dict = ssc_table_to_dict(cmod, dat)
+        return [False, cmod_err_dict]
+
+    # Get python dictionary representing compute module with all inputs/outputs defined
+    return [True, ssc_table_to_dict(cmod, dat)]
 
 
+def dict_to_ssc_table(py_dict, cmod_name):
+    ssc = PySSC()
+    dat = ssc.data_create()
+    return dict_to_ssc_table_dat(py_dict, cmod_name, dat)
 
+
+def dict_to_ssc_table_dat(py_dict, cmod_name, dat):
+    ssc = PySSC()
+
+    cmod = ssc.module_create(cmod_name.encode("utf-8"))
+
+    dict_keys = list(py_dict.keys())
+    # dat = ssc.data_create()
+
+    ii = 0
+    while (True):
+
+        p_ssc_entry = ssc.module_var_info(cmod, ii)
+
+        ssc_input_data_type = ssc.info_data_type(p_ssc_entry)
+
+        # 1 = String, 2 = Number, 3 = Array, 4 = Matrix, 5 = Table
+        if (ssc_input_data_type <= 0 or ssc_input_data_type > 5):
+            break
+
+        ssc_input_var_type = ssc.info_var_type(p_ssc_entry)
+
+        # If the variable type is INPUT (1) or INOUT (3)
+        if (ssc_input_var_type == 1 or ssc_input_var_type == 3):
+
+            # Get name of iith variable in compute module table
+            ssc_input_data_name = str(ssc.info_name(p_ssc_entry).decode("ascii"))
+
+            # Find corresponding 'des_par' dictionary item
+            is_str_test_key = False
+            for i in range(len(dict_keys)):
+                if (dict_keys[i] == ssc_input_data_name):
+                    is_str_test_key = True
+                    # print ("Found key")
+                    break
+
+            # Helpful for debugging:
+            # if(is_str_test_key == False):
+            #    print ("Did not find key: ", ssc_input_data_name)
+
+            # Set compute module data to dictionary value
+            if is_str_test_key:
+                if (ssc_input_data_type == 1):
+                    ssc.data_set_string(dat, ssc_input_data_name.encode("ascii"),
+                                        py_dict[ssc_input_data_name].encode("ascii"))
+                elif (ssc_input_data_type == 2):
+                    ssc.data_set_number(dat, ssc_input_data_name.encode("ascii"), py_dict[ssc_input_data_name])
+                elif (ssc_input_data_type == 3):
+                    ssc.data_set_array(dat, ssc_input_data_name.encode("ascii"), py_dict[ssc_input_data_name])
+                elif (ssc_input_data_type == 4):
+                    ssc.data_set_matrix(dat, ssc_input_data_name.encode("ascii"), py_dict[ssc_input_data_name])
+                elif (ssc_input_data_type == 5):
+                    ssc.data_set_table(dat, ssc_input_data_name.encode("ascii"), py_dict[ssc_input_data_name])
+
+        ii = ii + 1
+
+    return dat
+
+
+# Returns python dictionary representing SSC compute module w/ all required inputs/outputs defined
+def ssc_table_to_dict(cmod, dat):
+    ssc = PySSC()
+    i = 0
+    ssc_out = {}
+    while (True):
+        p_ssc_entry = ssc.module_var_info(cmod, i)
+        ssc_output_data_type = ssc.info_data_type(p_ssc_entry)
+        if (ssc_output_data_type <= 0 or ssc_output_data_type > 5):
+            break
+        ssc_output_data_name = str(ssc.info_name(p_ssc_entry).decode("ascii"))
+        ssc_data_query = ssc.data_query(dat, ssc_output_data_name.encode("ascii"))
+        if (ssc_data_query > 0):
+            if (ssc_output_data_type == 1):
+                ssc_out[ssc_output_data_name] = ssc.data_get_string(dat,
+                                                                    ssc_output_data_name.encode("ascii")).decode(
+                    "ascii")
+            elif (ssc_output_data_type == 2):
+                ssc_out[ssc_output_data_name] = ssc.data_get_number(dat, ssc_output_data_name.encode("ascii"))
+            elif (ssc_output_data_type == 3):
+                ssc_out[ssc_output_data_name] = ssc.data_get_array(dat, ssc_output_data_name.encode("ascii"))
+            elif (ssc_output_data_type == 4):
+                ssc_out[ssc_output_data_name] = ssc.data_get_matrix(dat, ssc_output_data_name.encode("ascii"))
+            elif (ssc_output_data_type == 5):
+                ssc_out[ssc_output_data_name] = ssc.data_get_table(dat, ssc_output_data_name.encode("ascii"))
+        i = i + 1
+
+    return ssc_out

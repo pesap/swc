@@ -19,7 +19,7 @@ import log
 from utils import _create_data_folder, get_solar_data
 from utils import timeit
 from pathlib import Path
-from nsrdb import get_nsrdb_data
+from nsrdb import nsrdb_data
 from context import *
 
 
@@ -50,7 +50,7 @@ def nsrdb(ctx, lat, lng, filename, force_download, year, verbose):
     # Define input dictionary
     site_info = {
         "lat": lat,
-        "lng": lng,
+        "lon": lng,
         "force_download": force_download,
         "year": str(year),
         "filename": filename,
@@ -62,7 +62,7 @@ def nsrdb(ctx, lat, lng, filename, force_download, year, verbose):
         pp.pprint(site_info)
         print("\n")
 
-    data = get_nsrdb_data(**site_info)
+    data = nsrdb_data(**site_info)
 
     # Print 24 hours
     print(data.head(24))
