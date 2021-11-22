@@ -152,9 +152,9 @@ def sam_simulation(nsrdb_data, meta=None, verbose=False, **kwargs):
 
     nsrdb_data["ac_generation_W"] = np.array(ssc.data_get_array(sam_data, b"ac"))
     nsrdb_data["dc_generation_W"] = np.array(ssc.data_get_array(sam_data, b"dc"))
-    nsrdb_data["dc_capacity_factor"] = (nsrdb_data["dc_generation_W"] * 1e3) / kwargs[
-        "system_capacity"
-    ]
+    # nsrdb_data["dc_capacity_factor"] = (nsrdb_data["dc_generation_W"] * 1e3) / kwargs[
+        # "system_capacity"
+    # ]
     nsrdb_data["POA"] = np.array(ssc.data_get_array(sam_data, b"poa"))
 
     # Module temperature in ºC
