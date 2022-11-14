@@ -1,5 +1,4 @@
 import sys
-import log
 import time
 import pandas as pd
 from pathlib import Path
@@ -7,7 +6,6 @@ from context import *
 
 
 data_path.mkdir(exist_ok=True, parents=True)
-logger = log.custom_logger(__name__)
 
 
 def timeit(method):
@@ -81,6 +79,25 @@ def check_nsrdb(data):
     return data
 
 
+    PV_config = {
+        "losses": 14.0757,
+        "dc_ac_ratio": 1.6,
+        "inv_eff": 96.0,
+        "system_capacity": 1000,
+        "gcr": 0.4,
+        "tilt": 0,
+        "azimuth": 180,
+        "lat": 37.77,
+        "lon": -121.06,
+        "year": 2012,
+        "interval": 30,
+        "model": "pvwattsv7",
+        "module_type": 2,
+        "adjust:constant": 0,
+        "array_type": 2,
+        "elev": 19.719999313354492,
+        "tz": -8.0,
+    }
 def template_system():
     return {
         "losses": 14.0757,
@@ -95,6 +112,9 @@ def template_system():
         "year": 2012,
         "interval": 60,
         "model": "pvwattsv7",
+        "module_type": 2,
         "adjust:constant": 0,
+        "elev": 19.719999313354492,
+        "tz": -8.0,
         "array_type": 2,  #  0 For fixed tilt, 2 for 1-axis and 4 for 2-axis
     }

@@ -23,7 +23,7 @@ from sscapi import PySSC
 from utils import timeit
 from utils import _create_data_folder, get_solar_data
 from utils import check_nsrdb
-from nsrdb import nsrdb_data
+from nsrdb import nsrdb
 
 # Package level variables
 from utils import template_system
@@ -57,7 +57,7 @@ def sam(lat, lng, filename, force_download, year, verbose):
         "system_capacity": 100,
         "verbose": False,
     }
-    meta_data = get_nsrdb_data(meta=True, **site_info)
+    meta_data = nsrdb_data(meta=True, **site_info)
     simulation_params["elevation"] = meta_data["Elevation"].values
     simulation_params["timezone"] = meta_data["Time Zone"].values
     simulation_params["tilt"] = site_info["lat"]
@@ -66,7 +66,7 @@ def sam(lat, lng, filename, force_download, year, verbose):
     pass
 
 
-def sam_simulation(nsrdb_data, meta=None, verbose=False, **kwargs):
+def sam_simulation(data, meta=None, verbose=False, **kwargs):
     """SAM solar PV simulation
 
     Perform a PVWATTS5 simulation using some input information about the
@@ -87,7 +87,7 @@ def sam_simulation(nsrdb_data, meta=None, verbose=False, **kwargs):
 
     params = {
         "lat": kwargs["lat"],
-        "lng": kwargs["lon"],
+        "lon": kwargs["lon"],
         "system_capacity": kwargs["system_capacity"],
         "dc_ac_ratio": kwargs["dc_ac_ratio"],
         "inv_eff": kwargs["inv_eff"],
@@ -114,15 +114,15 @@ def sam_simulation(nsrdb_data, meta=None, verbose=False, **kwargs):
         if key in valid_keys:
             ssc.data_set_number(weather_data, bytestr, value)
     # Set tilt of system in degrees
-    ssc.data_set_array(weather_data, b"year", nsrdb_data.index.year)
-    ssc.data_set_array(weather_data, b"month", nsrdb_data.index.month)
-    ssc.data_set_array(weather_data, b"day", nsrdb_data.index.day)
-    ssc.data_set_array(weather_data, b"hour", nsrdb_data.index.hour)
-    ssc.data_set_array(weather_data, b"minute", nsrdb_data.index.minute)
-    ssc.data_set_array(weather_data, b"dn", nsrdb_data["DNI"])
-    ssc.data_set_array(weather_data, b"df", nsrdb_data["DHI"])
-    ssc.data_set_array(weather_data, b"wspd", nsrdb_data["Wind Speed"])
-    ssc.data_set_array(weather_data, b"tdry", nsrdb_data["Temperature"])
+    ssc.data_set_array(weather_data, b"year", data.index.year)
+    ssc.data_set_array(weather_data, b"month", data.index.month)
+    ssc.data_set_array(weather_data, b"day", data.index.day)
+    ssc.data_set_array(weather_data, b"hour", data.index.hour)
+    ssc.data_set_array(weather_data, b"minute", data.index.minute)
+    ssc.data_set_array(weather_data, b"dn", data["DNI"])
+    ssc.data_set_array(weather_data, b"df", data["DHI"])
+    ssc.data_set_array(weather_data, b"wspd", data["Wind Speed"])
+    ssc.data_set_array(weather_data, b"tdry", data["Temperature"])
 
     # Create SAM compliant object
     sam_data = ssc.data_create()
@@ -150,49 +150,56 @@ def sam_simulation(nsrdb_data, meta=None, verbose=False, **kwargs):
 
     ssc.module_exec(mod, sam_data)
 
-    nsrdb_data["ac_generation_W"] = np.array(ssc.data_get_array(sam_data, b"ac"))
-    nsrdb_data["dc_generation_W"] = np.array(ssc.data_get_array(sam_data, b"dc"))
-    nsrdb_data["dc_capacity_factor"] = (nsrdb_data["dc_generation_W"] * 1e3) / kwargs[
+    data["ac_generation_W"] = np.array(ssc.data_get_array(sam_data, b"ac"))
+    data["dc_generation_W"] = np.array(ssc.data_get_array(sam_data, b"dc"))
+    data["dc_capacity_factor"] = (data["dc_generation_W"] / 1e3) / kwargs[
         "system_capacity"
     ]
-    nsrdb_data["POA"] = np.array(ssc.data_get_array(sam_data, b"poa"))
+    data["ac_capacity_factor"] = (
+        (data["ac_generation_W"] / 1e3)
+        / (kwargs["system_capacity"]
+        / kwargs["dc_ac_ratio"])
+    )
+    breakpoint()
+    data["POA"] = np.array(ssc.data_get_array(sam_data, b"poa"))
 
     # Module temperature in ºC
-    nsrdb_data["TCell"] = np.array(ssc.data_get_array(sam_data, b"tcell"))
+    data["TCell"] = np.array(ssc.data_get_array(sam_data, b"tcell"))
 
     # free the memory
     ssc.data_free(sam_data)
     ssc.module_free(mod)
 
-    return nsrdb_data
+    return data
 
 
 if __name__ == "__main__":
     PV_config = template_system()
-    df, meta_data = nsrdb_data(verbose=True, **PV_config)
+    df, meta_data = nsrdb(verbose=True, **PV_config)
 
-    PV_config = {
-        "losses": 14.0757,
-        "dc_ac_ratio": 1.6,
-        "inv_eff": 96.0,
-        "system_capacity": 1000,
-        "gcr": 0.4,
-        "tilt": 0,
-        "azimuth": 180,
-        "lat": 37.77,
-        "lon": -121.06,
-        "year": 2012,
-        "interval": 30,
-        "model": "pvwattsv7",
-        "module_type": 2,
-        "adjust:constant": 0,
-        "array_type": 2,
-        "elev": 19.719999313354492,
-        "tz": -8.0,
-    }
+    # PV_config = {
+    # "losses": 14.0757,
+    # "dc_ac_ratio": 1.6,
+    # "inv_eff": 96.0,
+    # "system_capacity": 1000,
+    # "gcr": 0.4,
+    # "tilt": 0,
+    # "azimuth": 180,
+    # "lat": 37.77,
+    # "lon": -121.06,
+    # "year": 2012,
+    # "interval": 30,
+    # "model": "pvwattsv7",
+    # "module_type": 2,
+    # "adjust:constant": 0,
+    # "array_type": 2,
+    # "elev": 19.719999313354492,
+    # "tz": -8.0,
+    # }
     output_ts = sam_simulation(df, **PV_config)
-    print(output_ts[["POA", "ac_generation_W", "dc_generation_W", "TCell"]].head(24))
-    import matplotlib.pyplot as plt
-
+    print(
+        output_ts[
+            ["POA", "ac_generation_W", "dc_generation_W", "dc_capacity_factor", "TCell"]
+        ].head(24)
+    )
     output_ts[["ac_generation_W"]].plot()
-    plt.show()
