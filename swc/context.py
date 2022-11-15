@@ -14,7 +14,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 from loguru import logger
 
-
 # Load .env variables
 load_dotenv()
 
@@ -28,7 +27,8 @@ output_path.mkdir(parents=True, exist_ok=True)
 
 pp = pprint.PrettyPrinter(indent=4, width=1)
 
-logger.remove(0)
+logger.remove()
+# logger.add(sys.stdout, level="INFO")
 logger.add(sys.stderr, level="INFO")
 logger.add("sam.log")
 

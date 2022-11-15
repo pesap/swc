@@ -12,13 +12,13 @@ See https://sam.nrel.gov/sites/default/files/content/virtual_conf_july_2013/07-s
 """
 
 import sys
-import log
 import numpy as np
 import pandas as pd
 from pathlib import Path
 
 # Package scripts
 import sscapi
+from loguru import logger
 from sscapi import PySSC
 from utils import timeit
 from utils import _create_data_folder, get_solar_data
@@ -34,7 +34,8 @@ ROOT = Path(__file__).parents[1]
 # Module level variables
 DATA_DIR = ROOT / "data"
 DATA_DIR.mkdir(exist_ok=True, parents=True)
-logger = log.custom_logger(__name__)
+
+# logger.add(sys.stdout, colorize=True, format="<green>{time}</green> <level>{message}</level>")
 
 
 def sam(lat, lng, filename, force_download, year, verbose):
@@ -98,7 +99,9 @@ def sam_simulation(data, meta=None, verbose=False, **kwargs):
         "interval": kwargs["interval"],
     }
     if verbose:
-        print({key: value for key, value in params.items()})
+        print()
+        pp.pprint({key: value for key, value in params.items()})
+        print("")
 
     # Start sscapi module
     ssc = PySSC()
@@ -155,16 +158,18 @@ def sam_simulation(data, meta=None, verbose=False, **kwargs):
     data["dc_capacity_factor"] = (data["dc_generation_W"] / 1e3) / kwargs[
         "system_capacity"
     ]
-    data["ac_capacity_factor"] = (
-        (data["ac_generation_W"] / 1e3)
-        / (kwargs["system_capacity"]
-        / kwargs["dc_ac_ratio"])
+    data["ac_capacity_factor"] = (data["ac_generation_W"] / 1e3) / (
+        kwargs["system_capacity"] / kwargs["dc_ac_ratio"]
     )
-    breakpoint()
     data["POA"] = np.array(ssc.data_get_array(sam_data, b"poa"))
 
     # Module temperature in ºC
     data["TCell"] = np.array(ssc.data_get_array(sam_data, b"tcell"))
+
+    logger.success(
+        "SAM simulation completed. Annual capacity factor:"
+        f"{data['ac_capacity_factor'].mean():.4}"
+    )
 
     # free the memory
     ssc.data_free(sam_data)
@@ -176,27 +181,7 @@ def sam_simulation(data, meta=None, verbose=False, **kwargs):
 if __name__ == "__main__":
     PV_config = template_system()
     df, meta_data = nsrdb(verbose=True, **PV_config)
-
-    # PV_config = {
-    # "losses": 14.0757,
-    # "dc_ac_ratio": 1.6,
-    # "inv_eff": 96.0,
-    # "system_capacity": 1000,
-    # "gcr": 0.4,
-    # "tilt": 0,
-    # "azimuth": 180,
-    # "lat": 37.77,
-    # "lon": -121.06,
-    # "year": 2012,
-    # "interval": 30,
-    # "model": "pvwattsv7",
-    # "module_type": 2,
-    # "adjust:constant": 0,
-    # "array_type": 2,
-    # "elev": 19.719999313354492,
-    # "tz": -8.0,
-    # }
-    output_ts = sam_simulation(df, **PV_config)
+    output_ts = sam_simulation(df, verbose=True, **PV_config)
     print(
         output_ts[
             ["POA", "ac_generation_W", "dc_generation_W", "dc_capacity_factor", "TCell"]

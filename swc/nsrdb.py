@@ -25,11 +25,13 @@ import requests
 # Package level variables
 from context import *
 
+
 def api_call(URL, params, verbose=None):
     if verbose:
         print("+ Sending following parameters to the API:\n")
         pprint.pprint(params)
         print("\n")
+    logger.debug("Requesting data from the API")
     response = requests.get(URL, params=params)
     logger.debug(f"API Response: {response.status_code}")
 
@@ -138,12 +140,12 @@ def nsrdb(
         response = api_call(URL, api_params, verbose=verbose)
         data = pd.read_csv(response.url, header=None, index_col=[0])
 
+        logger.success("Data donwload correctly.")
         # If we download a new file, we save it in the data folder
         data.to_csv(fname, index=True)
     else:
-        logger.info(f"Fname: {fname} exist. Reading from local directory")
+        logger.info(f"{fname} exist. Reading from local directory")
         data = pd.read_csv(fname, index_col=0)
-
 
     # Extract metadata and parse it as dictionary. The NSRDB returns the metadata in the
     # first two rows [:2] of the csv response and the rest [2:] is the time series data.
@@ -164,8 +166,6 @@ def nsrdb(
     for column in ts_data.columns:
         ts_data[column] = ts_data[column].astype(np.float32)
 
-    print("+ Data donwload correctly.")
-    print("")
     return ts_data, meta_data
 
 
